@@ -1,0 +1,75 @@
+// Каталог вшитых дефектов. В v0.1 в UI не показывается — студент ищет их сам,
+// сверяя ответы сервера со спецификацией. В v0.2 этот список станет эталоном
+// для проверки баг-репортов и источником счётчика "найдено N из 10".
+export const bugs = [
+  {
+    id: 'B1',
+    endpoint: 'POST /users',
+    type: 'status-code',
+    title: 'Возвращается 200 вместо 201 Created',
+    hint: 'Сравни статус-код со спецификацией',
+  },
+  {
+    id: 'B2',
+    endpoint: 'POST /users',
+    type: 'validation',
+    title: 'Email не валидируется — строка без "@" принимается',
+    hint: 'Попробуй создать пользователя с email "abc"',
+  },
+  {
+    id: 'B3',
+    endpoint: 'POST /users',
+    type: 'security',
+    title: 'В ответе присутствует лишнее поле passwordHash',
+    hint: 'Сравни набор полей в ответе с моделью User из спецификации',
+  },
+  {
+    id: 'B4',
+    endpoint: 'GET /users',
+    type: 'data-consistency',
+    title: 'Поле total всегда равно 100 и не связано с реальным количеством',
+    hint: 'Удали пользователя и запроси список снова',
+  },
+  {
+    id: 'B5',
+    endpoint: 'GET /users',
+    type: 'boundary',
+    title: 'limit=0 возвращает весь список вместо 400',
+    hint: 'Проверь границы допустимого диапазона limit',
+  },
+  {
+    id: 'B6',
+    endpoint: 'PUT /users/:id',
+    type: 'data-consistency',
+    title: 'Поле name не обновляется, но ответ 200 со старым значением',
+    hint: 'Обнови имя и перечитай пользователя отдельным GET',
+  },
+  {
+    id: 'B7',
+    endpoint: 'DELETE /users/:id',
+    type: 'status-code',
+    title: 'Возвращается 200 с телом вместо 204 без тела',
+    hint: 'Сравни статус-код и наличие тела со спецификацией',
+  },
+  {
+    id: 'B8',
+    endpoint: 'GET /users/:id',
+    type: 'status-code',
+    title: 'Несуществующий id даёт 200 и тело null вместо 404',
+    hint: 'Запроси заведомо отсутствующий id',
+  },
+  {
+    id: 'B9',
+    endpoint: '*',
+    type: 'contract',
+    title: 'createdAt не соответствует ISO 8601: нет "T" и нет таймзоны',
+    hint: 'Сравни формат даты с примером в модели User',
+  },
+  {
+    id: 'B10',
+    endpoint: 'GET /users',
+    type: 'contract',
+    title: 'В элементах списка отсутствует поле role',
+    hint: 'Сравни объект из списка с объектом из GET /users/:id',
+  },
+];
