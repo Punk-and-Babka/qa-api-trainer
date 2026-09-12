@@ -406,3 +406,79 @@ body {
 .json__bool { color: #c98fd0; }
 .json__null { color: var(--muted); font-style: italic; }
 .json__punct { color: var(--muted); }
+
+/* ---------- шапка: сброс состояния ---------- */
+
+.app__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.app__note {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.app__reset {
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.app__reset:hover {
+  border-color: var(--accent);
+}
+
+/* ---------- история ---------- */
+
+.panel__title--spaced {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.history__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+.history__item:hover {
+  border-color: var(--accent);
+}
+
+.history__path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history__time {
+  color: var(--muted);
+}
