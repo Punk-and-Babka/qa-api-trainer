@@ -1,9 +1,16 @@
 :root {
   --bg: #16181d;
   --panel: #1e2128;
+  --panel-alt: #23262e;
   --border: #2c3039;
   --text: #d7dae0;
   --muted: #868d9b;
+  --accent: #6ea8fe;
+
+  --ok: #57b87b;
+  --warn: #d4a13a;
+  --err: #d96a6a;
+
   --mono: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
 }
 
@@ -16,13 +23,207 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: system-ui, "Segoe UI", sans-serif;
-  font-size: 14px;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.app-shell {
-  padding: 24px;
+/* ---------- каркас ---------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
-.muted {
+.app__header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.app__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.app__scenario {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* Три колонки. Спека шире остальных: в ней сплошной текст, который
+   читают, а не поля, которые заполняют. */
+.layout {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1.2fr;
+  gap: 1px;
+  background: var(--border);
+  flex: 1;
+  min-height: 0; /* без этого grid не даст колонкам прокручиваться */
+}
+
+.panel {
+  background: var(--panel);
+  padding: 14px 16px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.panel__title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--muted);
 }
+
+.placeholder {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ---------- спецификация ---------- */
+
+.spec__description {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.spec__heading {
+  margin: 20px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
+.fields {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.fields td {
+  padding: 2px 8px 2px 0;
+  vertical-align: top;
+}
+
+.fields__name {
+  font-family: var(--mono);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.fields__req {
+  color: var(--err);
+  margin-left: 2px;
+}
+
+.fields__type {
+  font-family: var(--mono);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.fields__note {
+  color: var(--muted);
+  width: 100%;
+}
+
+.code-block {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.endpoint {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: var(--panel-alt);
+}
+
+.endpoint__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.endpoint__path {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.endpoint__summary {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.endpoint__block {
+  margin-top: 10px;
+}
+
+.endpoint__label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.responses {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.responses__item {
+  margin-bottom: 4px;
+}
+
+.responses__note {
+  color: var(--muted);
+  margin-left: 8px;
+}
+
+/* ---------- значки метода и статуса ---------- */
+
+.method {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+}
+
+.method--get { color: var(--ok); }
+.method--post { color: var(--accent); }
+.method--put { color: var(--warn); }
+.method--patch { color: var(--warn); }
+.method--delete { color: var(--err); }
+
+.status {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+
+.status--2xx { color: var(--ok); }
+.status--4xx { color: var(--warn); }
+.status--5xx { color: var(--err); }
