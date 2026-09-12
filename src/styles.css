@@ -227,3 +227,182 @@ body {
 .status--2xx { color: var(--ok); }
 .status--4xx { color: var(--warn); }
 .status--5xx { color: var(--err); }
+
+/* ---------- конструктор запроса ---------- */
+
+.request__line {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.request__method {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 4px;
+}
+
+.request__method option {
+  color: var(--text);
+  background: var(--panel-alt);
+}
+
+.request__path {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 8px;
+}
+
+.request__send {
+  font-size: 13px;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 3px;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+
+.request__send:disabled {
+  background: var(--border);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.request__query {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.request__pair {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
+.request__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.request__body {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 8px;
+}
+
+.request__body--invalid {
+  border-color: var(--err);
+}
+
+.request__error {
+  margin: 6px 0 0;
+  color: var(--err);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.request__hint {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.request__path:focus,
+.request__body:focus,
+.request__method:focus {
+  outline: 1px solid var(--accent);
+}
+
+/* ---------- ответ ---------- */
+
+.response__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+
+.response__status {
+  font-size: 20px;
+}
+
+.response__statusText {
+  font-family: var(--mono);
+  color: var(--muted);
+}
+
+.response__time {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.response__label {
+  margin: 12px 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.response__headers {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.response__headerName {
+  color: var(--muted);
+}
+
+/* ---------- подсветка JSON ---------- */
+
+.json {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.json__key { color: var(--accent); }
+.json__string { color: #c3a06a; }
+.json__number { color: #7fc9a0; }
+.json__bool { color: #c98fd0; }
+.json__null { color: var(--muted); font-style: italic; }
+.json__punct { color: var(--muted); }
