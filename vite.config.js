@@ -1,7 +1,20 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
+// Конфигурация функцией, а не объектом: базовый путь у сборки и у dev-сервера
+// разный, а функция получает команду, которой её вызвали.
+export default defineConfig(({ command }) => ({
+  // GitHub Pages отдаёт проектный сайт не из корня домена, а из подкаталога
+  // с именем репозитория: punk-and-babka.github.io/qa-api-trainer/. Без base
+  // Vite впишет в index.html абсолютные пути вида /assets/index-abc.js, и на
+  // Pages они укажут в корень домена — страница откроется пустой, а в консоли
+  // будут 404 на скрипт и стили. Симптом обманчивый: локально всё работает.
+  //
+  // Значение прописано строкой намеренно, а не берётся из переменной
+  // окружения: на этой машине Git Bash преобразует значения, похожие на
+  // POSIX-пути, в Windows-пути, и в HTML попал бы C:/Program Files/Git/...
+  base: command === 'build' ? '/qa-api-trainer/' : '/',
+
   plugins: [react()],
   server: {
     // Явный IPv4. По умолчанию Vite слушает "localhost", а Node с версии 17
@@ -12,4 +25,4 @@ export default defineConfig({
     port: 5173,
     open: true,
   },
-});
+}));
