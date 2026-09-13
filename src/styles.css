@@ -704,6 +704,15 @@ body {
 .schema__verdict--warn { color: var(--warn); }
 .schema__verdict--err { color: var(--err); }
 
+/* Оговорка под зелёным вердиктом: читается как сноска, а не как вторая
+   строка результата — иначе спорит с ним за внимание. */
+.schema__caveat {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 .schema__errors {
   list-style: none;
   margin: 6px 0 0;
