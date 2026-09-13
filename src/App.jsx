@@ -5,10 +5,12 @@ import ResponseViewer from './components/ResponseViewer.jsx';
 import HistoryList from './components/HistoryList.jsx';
 import BugReportForm from './components/BugReportForm.jsx';
 import BugProgress from './components/BugProgress.jsx';
+import SchemaCheck from './components/SchemaCheck.jsx';
 import { usersContract } from './mock-api/scenarios/users.contract.js';
 import { bugs } from './mock-api/scenarios/users.bugs.js';
 import { BUG_TYPES } from './mock-api/bug-types.js';
 import { checkReport, endpointOptions, foundBugIds } from './bug-check.js';
+import { checkResponse } from './schema-check.js';
 import { handle } from './mock-api/server.js';
 import { resetState } from './mock-api/state.js';
 
@@ -67,6 +69,12 @@ export default function App() {
   const [path, setPath] = useState('/users');
   const [bodyText, setBodyText] = useState('');
   const [response, setResponse] = useState(null);
+  // Метод и путь запроса, на который пришёл текущий ответ. Хранятся отдельно
+  // от полей конструктора: студент вправе поменять путь после отправки, и
+  // проверка по схеме должна сверять ответ с тем эндпоинтом, который реально
+  // спрашивали, а не с тем, что сейчас набрано в поле.
+  const [answered, setAnswered] = useState(null);
+  const [schemaResult, setSchemaResult] = useState(null);
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState([]);
   const [resetAt, setResetAt] = useState(null);
@@ -106,6 +114,9 @@ export default function App() {
 
     setPending(true);
     setResponse(null);
+    // Результат прошлой проверки относится к прошлому ответу — снимаем сразу,
+    // иначе он повисит на экране рядом с новым.
+    setSchemaResult(null);
 
     window.setTimeout(() => {
       entryId.current += 1;
@@ -122,6 +133,7 @@ export default function App() {
       };
 
       setResponse(result);
+      setAnswered({ method, path: parsedPath.path });
       setPending(false);
       // Новое сверху. Сравнение с прошлым запросом — самое частое действие,
       // и ради него не должно приходиться прокручивать список.
@@ -155,6 +167,12 @@ export default function App() {
     };
 
     setReports((current) => [entry, ...current]);
+  }
+
+  function runSchemaCheck() {
+    if (response === null || answered === null) return;
+
+    setSchemaResult(checkResponse(answered.method, answered.path, response));
   }
 
   // Подсказки открываются по одной, в порядке каталога, и только для тех
@@ -218,6 +236,13 @@ export default function App() {
         <section className="panel panel--response">
           <h2 className="panel__title">Ответ</h2>
           <ResponseViewer response={response} pending={pending} />
+
+          <h2 className="panel__title panel__title--spaced">Проверка по схеме</h2>
+          <SchemaCheck
+            result={schemaResult}
+            canCheck={response !== null && !pending}
+            onCheck={runSchemaCheck}
+          />
 
           <h2 className="panel__title panel__title--spaced">Баг-репорт</h2>
           <BugReportForm

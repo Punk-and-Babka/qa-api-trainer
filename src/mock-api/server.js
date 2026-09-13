@@ -3,10 +3,13 @@ import { usersRoutes } from './scenarios/users.handlers.js';
 const routes = usersRoutes;
 
 // Сопоставление пути с шаблоном вида "/users/:id".
+// Экспортируется: тем же матчингом пользуется проверка ответа по схеме, ей
+// нужно понять, какому эндпоинту спецификации соответствует "/users/1".
+// Второй такой же матчер в UI означал бы два места, которые обязаны совпадать.
 // Возвращает объект параметров при совпадении и null при несовпадении.
 // Важно именно null, а не пустой объект: у "/users" параметров нет, но
 // совпадение есть, и отличить одно от другого нужно.
-function matchPath(pattern, actual) {
+export function matchPath(pattern, actual) {
   const expected = pattern.split('/').filter(Boolean);
   const given = actual.split('/').filter(Boolean);
 
