@@ -50,7 +50,7 @@ export default function RequestBuilder({
           }}
         />
 
-        <button className="request__send" type="button" disabled={!canSend} onClick={onSend}>
+        <button className="btn btn--primary" type="button" disabled={!canSend} onClick={onSend}>
           {pending ? '…' : 'Отправить'}
         </button>
       </div>

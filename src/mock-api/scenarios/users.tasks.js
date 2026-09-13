@@ -7,11 +7,21 @@
 // отдельного отслеживания нет, состояние берётся из уже существующего
 // списка найденного.
 //
-// Поле tool называет инструмент, которым удобнее всего эту проверку сделать:
-// без него студент не догадается, что панель Tests и переменные нужны не для
-// красоты, а для конкретных заданий (B4 и B6 без них не находятся).
+// Поле tools перечисляет инструменты, которыми эту проверку удобнее всего
+// сделать: без такой пометки студент не догадается, что панель Tests и
+// переменные нужны не для красоты, а для конкретных заданий (B4 и B6 без них
+// не находятся). Это идентификаторы, а не готовый текст: по ним раскрашиваются
+// бейджи, а подписи лежат рядом в TASK_TOOLS.
 
 import { bugs } from './users.bugs.js';
+
+// Справочник инструментов: подпись для бейджа и модификатор класса для цвета.
+export const TASK_TOOLS = {
+  eye: { label: 'глазами', modifier: 'eye' },
+  schema: { label: 'схема', modifier: 'schema' },
+  tests: { label: 'Tests', modifier: 'tests' },
+  chain: { label: 'цепочка', modifier: 'chain' },
+};
 
 export const usersTasks = [
   {
@@ -19,7 +29,7 @@ export const usersTasks = [
     title: 'Осмотреть список',
     detail:
       'Отправь GET /users и сравни один элемент списка с моделью User в спецификации слева: тот же ли набор полей?',
-    tool: 'глазами',
+    tools: ['eye'],
     bugIds: ['B10'],
   },
   {
@@ -27,7 +37,7 @@ export const usersTasks = [
     title: 'Проверить границы limit',
     detail:
       'Спецификация обещает limit в диапазоне 1–100. Проверь весь диапазон по краям: 1, 100, 101 и 0. Ответы на верхней и нижней границе должны быть одинаково предсказуемы.',
-    tool: 'глазами',
+    tools: ['eye'],
     bugIds: ['B5'],
   },
   {
@@ -35,7 +45,7 @@ export const usersTasks = [
     title: 'Создать пользователя',
     detail:
       'Отправь POST /users с корректными email и name. Сверь статус ответа со спецификацией и набор полей — с моделью User.',
-    tool: 'проверка по схеме + Tests',
+    tools: ['schema', 'tests'],
     bugIds: ['B1', 'B3'],
   },
   {
@@ -43,7 +53,7 @@ export const usersTasks = [
     title: 'Проверить валидацию входа',
     detail:
       'Отправь POST /users с email без «@» и отдельно — без обязательного поля. Спецификация обещает 400 в обоих случаях.',
-    tool: 'глазами',
+    tools: ['eye'],
     bugIds: ['B2'],
   },
   {
@@ -51,7 +61,7 @@ export const usersTasks = [
     title: 'Сверить формат дат',
     detail:
       'Модель обещает createdAt в ISO 8601 — как в примере 2026-01-14T10:00:00Z. Сверь значение в любом ответе; кнопка «Проверить по схеме» проверяет формат сама.',
-    tool: 'проверка по схеме',
+    tools: ['schema'],
     bugIds: ['B9'],
   },
   {
@@ -59,7 +69,7 @@ export const usersTasks = [
     title: 'Запросить несуществующего',
     detail:
       'Запроси GET /users/99999 — id, которого заведомо нет. Сравни статус и тело со спецификацией.',
-    tool: 'проверка по схеме',
+    tools: ['schema'],
     bugIds: ['B8'],
   },
   {
@@ -67,7 +77,7 @@ export const usersTasks = [
     title: 'Обновить и перечитать',
     detail:
       'Обнови имя через PUT /users/1, затем сохрани id в переменную (pm.environment.set) и перечитай пользователя запросом GET /users/{{userId}}. Ответ PUT и ответ GET должны говорить одно и то же.',
-    tool: 'переменные + цепочка запросов',
+    tools: ['chain', 'tests'],
     bugIds: ['B6'],
   },
   {
@@ -75,7 +85,7 @@ export const usersTasks = [
     title: 'Удалить и пересчитать',
     detail:
       'Удали пользователя и сверь статус и тело со спецификацией. Затем запроси список: сходится ли total с реальным числом элементов?',
-    tool: 'проверка по схеме + Tests',
+    tools: ['schema', 'tests'],
     bugIds: ['B7', 'B4'],
   },
 ];
@@ -87,6 +97,11 @@ export const usersTasks = [
 // оставить часть багов на самостоятельный поиск.
 function assertTasksReferKnownBugs(tasks, catalog) {
   for (const task of tasks) {
+    for (const tool of task.tools) {
+      if (!Object.hasOwn(TASK_TOOLS, tool)) {
+        throw new Error(`Задание ${task.id} ссылается на неизвестный инструмент "${tool}".`);
+      }
+    }
     for (const bugId of task.bugIds) {
       if (!catalog.some((bug) => bug.id === bugId)) {
         throw new Error(

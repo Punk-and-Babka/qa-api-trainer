@@ -1,12 +1,8 @@
+import { statusClass } from '../status.js';
+
 // Панель эталонной спецификации. Ничего не знает про конкретный сценарий:
 // получает объект контракта через props и обходит его. Добавление эндпоинта
 // в users.contract.js отражается здесь без единой правки этого файла.
-
-function statusClass(status) {
-  if (status >= 500) return 'status status--5xx';
-  if (status >= 400) return 'status status--4xx';
-  return 'status status--2xx';
-}
 
 function FieldTable({ fields }) {
   return (

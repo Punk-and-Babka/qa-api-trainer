@@ -55,7 +55,7 @@ export default function BugProgress({
 
       <div className="hints">
         <button
-          className="hints__button"
+          className="btn btn--small"
           type="button"
           disabled={!hasHintLeft}
           onClick={onRevealHint}

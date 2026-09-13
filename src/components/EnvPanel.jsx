@@ -49,7 +49,7 @@ export default function EnvPanel({ variables, onChange, onAdd, onRemove }) {
       )}
 
       <div className="env__actions">
-        <button className="env__add" type="button" onClick={onAdd}>
+        <button className="btn btn--small" type="button" onClick={onAdd}>
           Добавить переменную
         </button>
         <span className="env__note">

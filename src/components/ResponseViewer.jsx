@@ -1,22 +1,5 @@
 import JsonView from './JsonView.jsx';
-
-// Расшифровки статусов — только те, что реально встречаются в сценарии.
-// Неизвестный код покажется без подписи, это не ошибка.
-const STATUS_TEXT = {
-  200: 'OK',
-  201: 'Created',
-  204: 'No Content',
-  400: 'Bad Request',
-  404: 'Not Found',
-  409: 'Conflict',
-  500: 'Internal Server Error',
-};
-
-function statusClass(status) {
-  if (status >= 500) return 'status status--5xx';
-  if (status >= 400) return 'status status--4xx';
-  return 'status status--2xx';
-}
+import { STATUS_TEXT, statusClass } from '../status.js';
 
 export default function ResponseViewer({ response, pending }) {
   if (pending) {

@@ -10,6 +10,18 @@
   --ok: #57b87b;
   --warn: #d4a13a;
   --err: #d96a6a;
+  --purple: #a98bd0;
+
+  /* Полупрозрачные подложки значков. Задаются через color-mix от самого цвета,
+     поэтому смена акцента выше автоматически меняет и подложку. */
+  --ok-bg: color-mix(in srgb, var(--ok) 16%, transparent);
+  --warn-bg: color-mix(in srgb, var(--warn) 16%, transparent);
+  --err-bg: color-mix(in srgb, var(--err) 16%, transparent);
+  --accent-bg: color-mix(in srgb, var(--accent) 16%, transparent);
+  --purple-bg: color-mix(in srgb, var(--purple) 16%, transparent);
+  --muted-bg: color-mix(in srgb, var(--muted) 14%, transparent);
+
+  --radius: 3px;
 
   --mono: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
 }
@@ -75,12 +87,22 @@ body {
 }
 
 .panel__title {
-  margin: 0 0 10px;
-  font-size: 13px;
-  font-weight: 600;
+  /* Липкий заголовок: колонки прокручиваются независимо и бывают длинными,
+     без этого непонятно, к какой секции относится то, что сейчас на экране.
+     Отрицательные горизонтальные поля растягивают подложку и нижнюю границу
+     на всю ширину колонки, поверх её внутренних отступов. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 -16px 10px;
+  padding: 6px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
+  letter-spacing: 0.08em;
+  color: var(--text);
 }
 
 .placeholder {
@@ -209,24 +231,29 @@ body {
   font-size: 11px;
   font-weight: 700;
   padding: 1px 6px;
-  border-radius: 3px;
-  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
 }
 
-.method--get { color: var(--ok); }
-.method--post { color: var(--accent); }
-.method--put { color: var(--warn); }
-.method--patch { color: var(--warn); }
-.method--delete { color: var(--err); }
+.method--get { color: var(--ok); background: var(--ok-bg); }
+.method--post { color: var(--accent); background: var(--accent-bg); }
+.method--put { color: var(--warn); background: var(--warn-bg); }
+.method--patch { color: var(--warn); background: var(--warn-bg); }
+.method--delete { color: var(--err); background: var(--err-bg); }
 
 .status {
   font-family: var(--mono);
+  font-size: 11px;
   font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius);
 }
 
-.status--2xx { color: var(--ok); }
-.status--4xx { color: var(--warn); }
-.status--5xx { color: var(--err); }
+.status--1xx { color: var(--muted); background: var(--muted-bg); }
+.status--2xx { color: var(--ok); background: var(--ok-bg); }
+.status--3xx { color: var(--accent); background: var(--accent-bg); }
+.status--4xx { color: var(--warn); background: var(--warn-bg); }
+.status--5xx { color: var(--err); background: var(--err-bg); }
 
 /* ---------- конструктор запроса ---------- */
 
@@ -263,21 +290,7 @@ body {
   padding: 5px 8px;
 }
 
-.request__send {
-  font-size: 13px;
-  color: var(--bg);
-  background: var(--accent);
-  border: none;
-  border-radius: 3px;
-  padding: 5px 14px;
-  cursor: pointer;
-}
 
-.request__send:disabled {
-  background: var(--border);
-  color: var(--muted);
-  cursor: not-allowed;
-}
 
 .request__query {
   display: flex;
@@ -422,26 +435,12 @@ body {
   font-size: 12px;
 }
 
-.app__reset {
-  font-size: 12px;
-  color: var(--text);
-  background: var(--panel-alt);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
 
-.app__reset:hover {
-  border-color: var(--accent);
-}
 
 /* ---------- история ---------- */
 
 .panel__title--spaced {
-  margin-top: 20px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  margin-top: 22px;
 }
 
 .history {
@@ -540,25 +539,8 @@ body {
   padding: 6px 8px;
 }
 
-.report__submit {
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--text);
-  background: var(--panel-alt);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 5px 12px;
-  cursor: pointer;
-}
 
-.report__submit:hover:not(:disabled) {
-  border-color: var(--accent);
-}
 
-.report__submit:disabled {
-  color: var(--muted);
-  cursor: default;
-}
 
 /* ---------- прогресс ---------- */
 
@@ -611,24 +593,8 @@ body {
   gap: 8px;
 }
 
-.hints__button {
-  font-size: 12px;
-  color: var(--text);
-  background: var(--panel-alt);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
 
-.hints__button:hover:not(:disabled) {
-  border-color: var(--accent);
-}
 
-.hints__button:disabled {
-  color: var(--muted);
-  cursor: default;
-}
 
 .hints__note {
   color: var(--muted);
@@ -718,24 +684,8 @@ body {
   gap: 8px;
 }
 
-.schema__button {
-  font-size: 12px;
-  color: var(--text);
-  background: var(--panel-alt);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
 
-.schema__button:hover:not(:disabled) {
-  border-color: var(--accent);
-}
 
-.schema__button:disabled {
-  color: var(--muted);
-  cursor: default;
-}
 
 .schema__note {
   color: var(--muted);
@@ -803,24 +753,8 @@ body {
   margin-top: 6px;
 }
 
-.tests__run {
-  font-size: 12px;
-  color: var(--text);
-  background: var(--panel-alt);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
 
-.tests__run:hover:not(:disabled) {
-  border-color: var(--accent);
-}
 
-.tests__run:disabled {
-  color: var(--muted);
-  cursor: default;
-}
 
 .tests__note {
   color: var(--muted);
@@ -931,19 +865,7 @@ body {
   margin-top: 4px;
 }
 
-.env__add {
-  font-size: 12px;
-  color: var(--text);
-  background: var(--panel-alt);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
 
-.env__add:hover {
-  border-color: var(--accent);
-}
 
 .env__note {
   color: var(--muted);
@@ -1088,14 +1010,214 @@ body {
   text-decoration: line-through;
 }
 
-.task__tool {
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-}
 
 .task__detail {
   margin: 3px 0 0;
   font-size: 12px;
   color: var(--muted);
+}
+
+/* ---------- кнопки ---------- */
+
+/* Один класс вместо шести почти одинаковых наборов правил, которые до v0.4.2
+   лежали в request, report, hints, schema, tests и env. Различаются кнопки
+   только весом: обычная и главная в своей панели. */
+.btn {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.btn--primary {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: var(--accent-bg);
+  font-weight: 600;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.btn--primary:disabled {
+  color: var(--muted);
+  background: var(--panel-alt);
+  border-color: var(--border);
+  font-weight: 400;
+}
+
+.btn--small {
+  padding: 3px 9px;
+}
+
+/* ---------- бейджи ---------- */
+
+.badge {
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 0 6px;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+.badge--eye { color: var(--muted); background: var(--muted-bg); }
+.badge--schema { color: var(--accent); background: var(--accent-bg); }
+.badge--tests { color: var(--warn); background: var(--warn-bg); }
+.badge--chain { color: var(--purple); background: var(--purple-bg); }
+
+.badge--count {
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+}
+
+/* ---------- колонки и шапка ---------- */
+
+/* Разделители колонок заметнее фона панелей: три колонки читаются как три
+   разные зоны, а не как один сплошной лист. */
+.layout {
+  gap: 2px;
+}
+
+.app__header {
+  align-items: center;
+  gap: 14px;
+}
+
+.app__score {
+  font-weight: 700;
+  background: var(--accent-bg);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+/* ---------- задания: полоса выполнения и бейджи ---------- */
+
+.tasks-panel__meter {
+  height: 4px;
+  background: var(--panel-alt);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.tasks-panel__fill {
+  height: 100%;
+  background: var(--accent);
+}
+
+.task__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 0 20px;
+}
+
+.task--done .task__badges {
+  opacity: 0.5;
+}
+
+.task__detail {
+  margin: 4px 0 0 20px;
+}
+
+.task {
+  padding: 7px 0;
+}
+
+/* ---------- справка ---------- */
+
+/* Акцентная полоса слева отделяет справку от содержимого панели: это не часть
+   задания, а рамка вокруг всего происходящего. */
+.help {
+  border-left: 2px solid var(--accent);
+  padding: 8px 10px;
+  margin-bottom: 4px;
+}
+
+.help__toggle {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ---------- визуальная иерархия результатов ---------- */
+
+/* Статус ответа — самое важное на панели, поэтому крупнее и с подложкой,
+   как остальные значки статуса, только с большим внутренним отступом. */
+.response__status {
+  font-size: 18px;
+  padding: 2px 10px;
+}
+
+.response__meta {
+  align-items: center;
+  padding-bottom: 10px;
+}
+
+/* PASS/FAIL и вердикты репортов — тоже значки, а не просто цветной текст:
+   их сканируют глазами по колонке, и подложка даёт эту колонку увидеть. */
+.results__mark,
+.verdict {
+  min-width: 42px;
+  text-align: center;
+  padding: 1px 6px;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 700;
+}
+
+.results__mark--ok { color: var(--ok); background: var(--ok-bg); }
+.results__mark--fail { color: var(--err); background: var(--err-bg); }
+
+.verdict--ok { color: var(--ok); background: var(--ok-bg); }
+.verdict--dup { color: var(--warn); background: var(--warn-bg); }
+.verdict--no { color: var(--err); background: var(--err-bg); }
+
+.found__id {
+  color: var(--ok);
+  background: var(--ok-bg);
+  border-radius: var(--radius);
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Вердикт проверки по схеме — с полосой слева того же цвета: блок читается
+   как единое сообщение, а не как случайная строка текста. */
+.schema__verdict {
+  border-left: 2px solid currentColor;
+  padding: 2px 0 2px 8px;
+}
+
+/* Строка истории: сама по себе кнопка, и это должно быть видно до наведения. */
+.history__item {
+  transition: border-color 80ms linear, background 80ms linear;
+}
+
+.history__item:hover {
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel-alt));
+}
+
+/* Элементы списков не должны сливаться в сплошную сетку линий: последняя
+   граница внутри списка лишняя. */
+.found__item:last-child,
+.task:last-child,
+.results__item:last-child,
+.schema__error:last-child {
+  border-bottom: none;
 }

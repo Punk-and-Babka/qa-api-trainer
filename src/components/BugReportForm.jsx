@@ -77,7 +77,7 @@ export default function BugReportForm({ endpoints, types, onSubmit }) {
       />
 
       <button
-        className="report__submit"
+        className="btn btn--primary"
         type="button"
         disabled={!canSubmit}
         onClick={submit}

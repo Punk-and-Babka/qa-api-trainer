@@ -14,7 +14,7 @@ export default function TestsEditor({ script, canRun, onChange, onRun }) {
       />
 
       <div className="tests__actions">
-        <button className="tests__run" type="button" disabled={!canRun} onClick={onRun}>
+        <button className="btn" type="button" disabled={!canRun} onClick={onRun}>
           Прогнать тесты
         </button>
         <span className="tests__note">

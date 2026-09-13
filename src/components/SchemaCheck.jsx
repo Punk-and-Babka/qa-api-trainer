@@ -10,7 +10,7 @@ export default function SchemaCheck({ result, canCheck, onCheck }) {
     <div className="schema">
       <div className="schema__actions">
         <button
-          className="schema__button"
+          className="btn"
           type="button"
           disabled={!canCheck}
           onClick={onCheck}

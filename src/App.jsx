@@ -359,10 +359,10 @@ export default function App() {
           {resetAt ? (
             <span className="app__note">состояние сброшено в {resetAt}</span>
           ) : null}
-          <button className="app__reset" type="button" onClick={resetServer}>
+          <button className="btn" type="button" onClick={resetServer}>
             Сбросить состояние сервера
           </button>
-          <button className="app__reset" type="button" onClick={startOver}>
+          <button className="btn" type="button" onClick={startOver}>
             Начать заново
           </button>
         </div>
