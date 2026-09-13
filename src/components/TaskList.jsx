@@ -1,19 +1,9 @@
 import { TASK_TOOLS } from '../mock-api/scenarios/users.tasks.js';
+import { plural } from '../plural.js';
 
 // Список заданий. Отметка о выполнении не хранится: задание закрыто, когда
 // засчитаны все связанные с ним баги, и это вычисляется при рендере из уже
 // существующего списка найденного.
-
-// «1 дефект», «2 дефекта», «5 дефектов» — русские числительные требуют трёх
-// форм, и правило зависит от двух последних цифр, а не только от последней.
-function plural(count) {
-  const tens = count % 100;
-  const ones = count % 10;
-  if (tens >= 11 && tens <= 14) return 'дефектов';
-  if (ones === 1) return 'дефект';
-  if (ones >= 2 && ones <= 4) return 'дефекта';
-  return 'дефектов';
-}
 
 export default function TaskList({ tasks, foundIds }) {
   const doneCount = (task) => task.bugIds.filter((id) => foundIds.includes(id)).length;
@@ -57,7 +47,8 @@ export default function TaskList({ tasks, foundIds }) {
                   {/* Сколько дефектов за заданием — чтобы студент знал, что
                       искать дальше, а не остановился на первом найденном. */}
                   {found > 0 && !complete ? `${found} из ${task.bugIds.length}, ` : ''}
-                  {task.bugIds.length} {plural(task.bugIds.length)}
+                  {task.bugIds.length}{' '}
+                  {plural(task.bugIds.length, ['дефект', 'дефекта', 'дефектов'])}
                 </span>
               </div>
 

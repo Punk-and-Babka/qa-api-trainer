@@ -21,6 +21,7 @@ import { checkResponse } from './schema-check.js';
 import { runTests } from './pm-runtime.js';
 import { load, save, clear } from './storage.js';
 import { applyVariables, mergeVariables, nextId, toObject } from './variables.js';
+import { plural } from './plural.js';
 import { handle } from './mock-api/server.js';
 import { resetState } from './mock-api/state.js';
 
@@ -118,6 +119,10 @@ export default function App() {
   // свернули: сохранённое значение читается из снимка.
   const [helpOpen, setHelpOpen] = useState(SAVED?.helpOpen ?? true);
   const [tasksOpen, setTasksOpen] = useState(SAVED?.tasksOpen ?? true);
+  const [specOpen, setSpecOpen] = useState(SAVED?.specOpen ?? true);
+  const [varsOpen, setVarsOpen] = useState(SAVED?.varsOpen ?? true);
+  const [testsOpen, setTestsOpen] = useState(SAVED?.testsOpen ?? true);
+  const [historyOpen, setHistoryOpen] = useState(SAVED?.historyOpen ?? true);
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState(SAVED?.history ?? []);
   const [resetAt, setResetAt] = useState(null);
@@ -148,6 +153,10 @@ export default function App() {
         variables,
         helpOpen,
         tasksOpen,
+        specOpen,
+        varsOpen,
+        testsOpen,
+        historyOpen,
       });
     }, 300);
 
@@ -163,6 +172,10 @@ export default function App() {
     variables,
     helpOpen,
     tasksOpen,
+    specOpen,
+    varsOpen,
+    testsOpen,
+    historyOpen,
   ]);
 
   // Ответ, разобранный запрос и результаты проверок сознательно не
@@ -196,6 +209,10 @@ export default function App() {
   const doneTasks = usersTasks.filter((task) =>
     task.bugIds.every((id) => foundIds.includes(id)),
   ).length;
+
+  // Сколько тестов прошло в последнем прогоне — сводка для свёрнутой панели
+  // Tests. Сам список результатов живёт в правой колонке, рядом с ответом.
+  const testsPassed = testRun === null ? 0 : testRun.tests.filter((test) => test.passed).length;
 
   function send() {
     if (parsedBody.error !== null || pending) {
@@ -347,6 +364,10 @@ export default function App() {
     setVariables([]);
     setHelpOpen(true);
     setTasksOpen(true);
+    setSpecOpen(true);
+    setVarsOpen(true);
+    setTestsOpen(true);
+    setHistoryOpen(true);
     setResponse(null);
     setAnswered(null);
     setSchemaResult(null);
@@ -399,11 +420,18 @@ export default function App() {
             <TaskList tasks={usersTasks} foundIds={foundIds} />
           </Section>
 
-          <h2 className="panel__title panel__title--spaced">Спецификация</h2>
-          <p className="panel__lead">
-            Эталон. Всё, что сервер делает иначе, — дефект.
-          </p>
-          <SpecPanel contract={usersContract} />
+          <Section
+            title="Спецификация"
+            summary={`${usersContract.endpoints.length} ${plural(
+              usersContract.endpoints.length,
+              ['эндпоинт', 'эндпоинта', 'эндпоинтов'],
+            )}`}
+            lead="Эталон. Всё, что сервер делает иначе, — дефект."
+            open={specOpen}
+            onToggle={() => setSpecOpen((current) => !current)}
+          >
+            <SpecPanel contract={usersContract} />
+          </Section>
         </section>
 
         <section className="panel panel--request">
@@ -427,31 +455,60 @@ export default function App() {
             onSend={send}
           />
 
-          <h2 className="panel__title panel__title--spaced">Переменные</h2>
-          <p className="panel__lead">
-            Для цепочек: значение из одного ответа подставляется в следующий
-            запрос.
-          </p>
-          <EnvPanel
-            variables={variables}
-            onChange={changeVariable}
-            onAdd={addVariable}
-            onRemove={removeVariable}
-          />
+          <Section
+            title="Переменные"
+            summary={
+              variables.length === 0
+                ? null
+                : `${variables.length} ${plural(variables.length, [
+                    'переменная',
+                    'переменные',
+                    'переменных',
+                  ])}`
+            }
+            lead="Для цепочек: значение из одного ответа подставляется в следующий запрос."
+            open={varsOpen}
+            onToggle={() => setVarsOpen((current) => !current)}
+          >
+            <EnvPanel
+              variables={variables}
+              onChange={changeVariable}
+              onAdd={addVariable}
+              onRemove={removeVariable}
+            />
+          </Section>
 
-          <h2 className="panel__title panel__title--spaced">Tests</h2>
-          <p className="panel__lead">
-            JavaScript. Тест падает, если функция бросила исключение.
-          </p>
-          <TestsEditor
-            script={testScript}
-            canRun={response !== null && !pending}
-            onChange={setTestScript}
-            onRun={rerunTests}
-          />
+          <Section
+            title="Tests"
+            summary={testRun === null ? null : `${testsPassed} / ${testRun.tests.length}`}
+            lead="JavaScript. Тест падает, если функция бросила исключение."
+            open={testsOpen}
+            onToggle={() => setTestsOpen((current) => !current)}
+          >
+            <TestsEditor
+              script={testScript}
+              canRun={response !== null && !pending}
+              onChange={setTestScript}
+              onRun={rerunTests}
+            />
+          </Section>
 
-          <h2 className="panel__title panel__title--spaced">История</h2>
-          <HistoryList entries={history} onPick={pickFromHistory} />
+          <Section
+            title="История"
+            summary={
+              history.length === 0
+                ? null
+                : `${history.length} ${plural(history.length, [
+                    'запрос',
+                    'запроса',
+                    'запросов',
+                  ])}`
+            }
+            open={historyOpen}
+            onToggle={() => setHistoryOpen((current) => !current)}
+          >
+            <HistoryList entries={history} onPick={pickFromHistory} />
+          </Section>
         </section>
 
         <section className="panel panel--response">
