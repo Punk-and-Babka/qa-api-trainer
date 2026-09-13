@@ -960,6 +960,18 @@ body {
   padding-top: 6px;
 }
 
+/* Кнопка «Подробнее» отделена от текста сверху: она заканчивает первую часть
+   справки, а не продолжает последний шаг. */
+.help__more {
+  margin-top: 10px;
+}
+
+.help__extra {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 2px;
+}
+
 .tasks-panel__count {
   margin: 0 0 6px;
   font-size: 12px;

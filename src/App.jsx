@@ -286,6 +286,16 @@ export default function App() {
   // из ранних версий сценария не знают — они все относятся к users.
   const scenarioReports = reports.filter((report) => (report.scenario ?? 'users') === scenarioId);
   const scenarioHistory = history.filter((entry) => (entry.scenario ?? 'users') === scenarioId);
+  // Начал ли студент работать в этом сценарии. Разделы, которые до первого
+  // запроса не могут ничего показать и ничего принять, до этого момента не
+  // рисуются вовсе: на первом экране должно остаться то, с чем можно
+  // что-то сделать прямо сейчас.
+  //
+  // Признак берётся из истории, а не из текущего ответа: ответ сознательно не
+  // сохраняется между сессиями, и после перезагрузки форма баг-репорта
+  // пропала бы у студента, который уже нашёл половину дефектов. История
+  // сохраняется, поэтому «начал» переживает перезагрузку.
+  const started = scenarioHistory.length > 0 || scenarioReports.length > 0;
 
   // Число закрытых заданий нужно и панели, и её заголовку: в свёрнутом виде
   // это единственное, что от заданий остаётся видно.
@@ -658,23 +668,21 @@ export default function App() {
             </Section>
           ) : null}
 
-          <Section
-            title="История"
-            reference={REFERENCE.history}
-            summary={
-              scenarioHistory.length === 0
-                ? null
-                : `${scenarioHistory.length} ${plural(scenarioHistory.length, [
-                    'запрос',
-                    'запроса',
-                    'запросов',
-                  ])}`
-            }
-            open={historyOpen}
-            onToggle={() => setHistoryOpen((current) => !current)}
-          >
-            <HistoryList entries={scenarioHistory} onPick={pickFromHistory} />
-          </Section>
+          {started ? (
+            <Section
+              title="История"
+              reference={REFERENCE.history}
+              summary={`${scenarioHistory.length} ${plural(scenarioHistory.length, [
+                'запрос',
+                'запроса',
+                'запросов',
+              ])}`}
+              open={historyOpen}
+              onToggle={() => setHistoryOpen((current) => !current)}
+            >
+              <HistoryList entries={scenarioHistory} onPick={pickFromHistory} />
+            </Section>
+          ) : null}
         </section>
 
         <Splitter
@@ -689,10 +697,10 @@ export default function App() {
             <ResponseViewer response={response} pending={pending} />
           </Section>
 
-          {testsEnabled ? (
+          {testsEnabled && testRun !== null ? (
             <Section
               title="Результаты тестов"
-              summary={testRun === null ? null : `${testsPassed} / ${testRun.tests.length}`}
+              summary={`${testsPassed} / ${testRun.tests.length}`}
             >
               <TestResults run={testRun} />
             </Section>
@@ -712,28 +720,36 @@ export default function App() {
             </Section>
           ) : null}
 
-          <Section
-            title="Баг-репорт"
-            lead="Совпадение проверяется по паре «эндпоинт + тип»."
-            reference={REFERENCE.report}
-          >
-            <BugReportForm
-              endpoints={reportEndpoints}
-              types={BUG_TYPES}
-              onSubmit={submitReport}
-            />
-          </Section>
+          {/* Баг-репорт и прогресс появляются вместе: до первого ответа
+              заводить нечего, а в прогрессе нечего показывать. Подсказки живут
+              в прогрессе и становятся доступны тогда же — раньше они и не
+              нужны, с чего начать, говорит список заданий. */}
+          {started ? (
+            <>
+              <Section
+                title="Баг-репорт"
+                lead="Совпадение проверяется по паре «эндпоинт + тип»."
+                reference={REFERENCE.report}
+              >
+                <BugReportForm
+                  endpoints={reportEndpoints}
+                  types={BUG_TYPES}
+                  onSubmit={submitReport}
+                />
+              </Section>
 
-          <Section title="Прогресс" summary={`${foundIds.length} / ${bugs.length}`}>
-            <BugProgress
-              bugs={bugs}
-              types={BUG_TYPES}
-              reports={scenarioReports}
-              foundIds={foundIds}
-              revealedHints={revealedHints}
-              onRevealHint={revealHint}
-            />
-          </Section>
+              <Section title="Прогресс" summary={`${foundIds.length} / ${bugs.length}`}>
+                <BugProgress
+                  bugs={bugs}
+                  types={BUG_TYPES}
+                  reports={scenarioReports}
+                  foundIds={foundIds}
+                  revealedHints={revealedHints}
+                  onRevealHint={revealHint}
+                />
+              </Section>
+            </>
+          ) : null}
         </section>
       </main>
     </div>
