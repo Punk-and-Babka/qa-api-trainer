@@ -1355,3 +1355,24 @@ body {
 .reference__code:has(+ .reference__note) {
   max-width: 100%;
 }
+
+/* ---------- подзаголовки внутри справки ---------- */
+
+/* Справка стала длинной, и без подзаголовков в ней невозможно найти нужное
+   место глазами: читают её обычно не подряд, а возвращаются за конкретным. */
+.help__heading {
+  margin: 12px 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+
+.help__heading:first-child {
+  margin-top: 0;
+}
+
+.help p {
+  margin: 6px 0 0;
+}
