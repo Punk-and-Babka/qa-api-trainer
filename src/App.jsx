@@ -9,8 +9,11 @@ import SchemaCheck from './components/SchemaCheck.jsx';
 import TestsEditor from './components/TestsEditor.jsx';
 import TestResults from './components/TestResults.jsx';
 import EnvPanel from './components/EnvPanel.jsx';
+import TaskList from './components/TaskList.jsx';
+import HelpBlock from './components/HelpBlock.jsx';
 import { usersContract } from './mock-api/scenarios/users.contract.js';
 import { bugs } from './mock-api/scenarios/users.bugs.js';
+import { usersTasks } from './mock-api/scenarios/users.tasks.js';
 import { BUG_TYPES } from './mock-api/bug-types.js';
 import { checkReport, endpointOptions, foundBugIds } from './bug-check.js';
 import { checkResponse } from './schema-check.js';
@@ -110,6 +113,9 @@ export default function App() {
   const [testScript, setTestScript] = useState(SAVED?.testScript ?? DEFAULT_SCRIPT);
   const [testRun, setTestRun] = useState(null);
   const [variables, setVariables] = useState(SAVED?.variables ?? []);
+  // Справка открыта при первом заходе и закрывается насовсем, когда её
+  // свернули: сохранённое значение читается из снимка.
+  const [helpOpen, setHelpOpen] = useState(SAVED?.helpOpen ?? true);
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState(SAVED?.history ?? []);
   const [resetAt, setResetAt] = useState(null);
@@ -138,11 +144,22 @@ export default function App() {
         reports,
         revealedHints,
         variables,
+        helpOpen,
       });
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [method, path, bodyText, testScript, history, reports, revealedHints, variables]);
+  }, [
+    method,
+    path,
+    bodyText,
+    testScript,
+    history,
+    reports,
+    revealedHints,
+    variables,
+    helpOpen,
+  ]);
 
   // Ответ, разобранный запрос и результаты проверок сознательно не
   // сохраняются: ответ относится к состоянию сервера, которого после
@@ -247,6 +264,7 @@ export default function App() {
       description: draft.description,
       verdict: result.verdict,
       bugId: result.bugId,
+      nearMiss: result.nearMiss,
     };
 
     setReports((current) => [entry, ...current]);
@@ -317,6 +335,7 @@ export default function App() {
     setReports([]);
     setRevealedHints([]);
     setVariables([]);
+    setHelpOpen(true);
     setResponse(null);
     setAnswered(null);
     setSchemaResult(null);
@@ -351,11 +370,28 @@ export default function App() {
 
       <main className="layout">
         <section className="panel panel--spec">
+          <HelpBlock open={helpOpen} onToggle={() => setHelpOpen((current) => !current)} />
+
+          <h2 className="panel__title panel__title--spaced">Задания</h2>
+          <p className="panel__lead">
+            Порядок произвольный. Задание закрывается само, когда засчитан
+            связанный с ним баг-репорт.
+          </p>
+          <TaskList tasks={usersTasks} foundIds={foundIds} />
+
+          <h2 className="panel__title panel__title--spaced">Спецификация</h2>
+          <p className="panel__lead">
+            Эталон. Всё, что сервер делает иначе, — дефект.
+          </p>
           <SpecPanel contract={usersContract} />
         </section>
 
         <section className="panel panel--request">
           <h2 className="panel__title">Запрос</h2>
+          <p className="panel__lead">
+            Путь целиком, вместе с query: <code>/users?limit=0</code>. Enter
+            отправляет.
+          </p>
           <RequestBuilder
             method={method}
             path={path}
@@ -372,6 +408,10 @@ export default function App() {
           />
 
           <h2 className="panel__title panel__title--spaced">Переменные</h2>
+          <p className="panel__lead">
+            Для цепочек: значение из одного ответа подставляется в следующий
+            запрос.
+          </p>
           <EnvPanel
             variables={variables}
             onChange={changeVariable}
@@ -380,6 +420,9 @@ export default function App() {
           />
 
           <h2 className="panel__title panel__title--spaced">Tests</h2>
+          <p className="panel__lead">
+            JavaScript. Тест падает, если функция бросила исключение.
+          </p>
           <TestsEditor
             script={testScript}
             canRun={response !== null && !pending}
@@ -399,6 +442,10 @@ export default function App() {
           <TestResults run={testRun} />
 
           <h2 className="panel__title panel__title--spaced">Проверка по схеме</h2>
+          <p className="panel__lead">
+            Сверяет тело с моделью из спецификации. Видит не всё: статус, не
+            описанный в спеке, до тела не пускает.
+          </p>
           <SchemaCheck
             result={schemaResult}
             canCheck={response !== null && !pending}
@@ -406,6 +453,10 @@ export default function App() {
           />
 
           <h2 className="panel__title panel__title--spaced">Баг-репорт</h2>
+          <p className="panel__lead">
+            Совпадение проверяется по паре «эндпоинт + тип». Описание пишется
+            для себя — на засчитывание оно не влияет.
+          </p>
           <BugReportForm
             endpoints={REPORT_ENDPOINTS}
             types={BUG_TYPES}

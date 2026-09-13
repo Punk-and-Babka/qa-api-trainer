@@ -5,80 +5,87 @@ export const bugs = [
   {
     id: 'B1',
     endpoint: 'POST /users',
-    type: 'status-code',
+    types: ['status-code'],
     title: 'Возвращается 200 вместо 201 Created',
     hint: 'Сравни статус-код со спецификацией',
   },
   {
     id: 'B2',
     endpoint: 'POST /users',
-    type: 'validation',
+    types: ['validation'],
     title: 'Email не валидируется — строка без "@" принимается',
     hint: 'Попробуй создать пользователя с email "abc"',
   },
   {
     id: 'B3',
     endpoint: 'POST /users',
-    type: 'security',
+    // Лишнее поле в ответе — одновременно утечка и нарушение контракта.
+    // Оба ответа студента засчитываются: спорить с ним тут не о чем.
+    types: ['security', 'contract'],
     title: 'В ответе присутствует лишнее поле passwordHash',
     hint: 'Сравни набор полей в ответе с моделью User из спецификации',
   },
   {
     id: 'B4',
     endpoint: 'GET /users',
-    type: 'data-consistency',
+    types: ['data-consistency'],
     title: 'Поле total всегда равно 100 и не связано с реальным количеством',
     hint: 'Удали пользователя и запроси список снова',
   },
   {
     id: 'B5',
     endpoint: 'GET /users',
-    type: 'boundary',
+    types: ['boundary', 'validation'],
     title: 'limit=0 возвращает весь список вместо 400',
     hint: 'Проверь границы допустимого диапазона limit',
   },
   {
     id: 'B6',
     endpoint: 'PUT /users/:id',
-    type: 'data-consistency',
+    types: ['data-consistency'],
     title: 'Поле name не обновляется, но ответ 200 со старым значением',
     hint: 'Обнови имя и перечитай пользователя отдельным GET',
   },
   {
     id: 'B7',
     endpoint: 'DELETE /users/:id',
-    type: 'status-code',
+    types: ['status-code', 'contract'],
     title: 'Возвращается 200 с телом вместо 204 без тела',
     hint: 'Сравни статус-код и наличие тела со спецификацией',
   },
   {
     id: 'B8',
     endpoint: 'GET /users/:id',
-    type: 'status-code',
+    types: ['status-code', 'contract'],
     title: 'Несуществующий id даёт 200 и тело null вместо 404',
     hint: 'Запроси заведомо отсутствующий id',
   },
   {
     id: 'B9',
     endpoint: '*',
-    type: 'contract',
+    types: ['format'],
     title: 'createdAt не соответствует ISO 8601: нет "T" и нет таймзоны',
     hint: 'Сравни формат даты с примером в модели User',
   },
   {
     id: 'B10',
     endpoint: 'GET /users',
-    type: 'contract',
+    types: ['contract'],
     title: 'В элементах списка отсутствует поле role',
     hint: 'Сравни объект из списка с объектом из GET /users/:id',
   },
 ];
 
 // Инвариант каталога: пара «эндпоинт + тип» должна быть уникальной. Именно по
-// этой паре v0.2 опознаёт баг-репорт, поэтому два бага с одинаковой парой
+// этой паре опознаётся баг-репорт, поэтому два бага с одинаковой парой
 // сделали бы сверку неоднозначной — и заметить это по поведению UI было бы
 // трудно (репорт просто засчитывался бы «не тому» багу). Дешевле уронить
 // приложение сразу при импорте модуля, с указанием конфликтующих id.
+//
+// С v0.4.1 у бага несколько допустимых типов, поэтому проверяются все пары
+// «эндпоинт × каждый тип». Отдельно проверяется пара с эндпоинтом «*»: такой
+// баг подходит под любой эндпоинт, и его тип не должен встречаться больше
+// нигде, иначе выбор снова станет неоднозначным.
 //
 // Проверка выполняется один раз на загрузку модуля: ES-модули кэшируются, так
 // что повторные импорты её не повторяют.
@@ -86,19 +93,39 @@ function assertUniquePairs(list) {
   const seen = new Map();
 
   for (const bug of list) {
-    const key = `${bug.endpoint} + ${bug.type}`;
-    const previous = seen.get(key);
+    for (const type of bug.types) {
+      const key = `${bug.endpoint} + ${type}`;
+      const previous = seen.get(key);
 
-    if (previous !== undefined) {
-      throw new Error(
-        `Каталог багов: дубль пары "${key}" — ${previous} и ${bug.id}. ` +
-          'Сверка баг-репортов опознаёт баг по этой паре, она обязана быть ' +
-          'уникальной. Раздели баги разными типами дефекта или разными ' +
-          'эндпоинтами.',
-      );
+      if (previous !== undefined) {
+        throw new Error(
+          `Каталог багов: дубль пары "${key}" — ${previous} и ${bug.id}. ` +
+            'Сверка баг-репортов опознаёт баг по этой паре, она обязана быть ' +
+            'уникальной. Раздели баги разными типами дефекта или разными ' +
+            'эндпоинтами.',
+        );
+      }
+
+      seen.set(key, bug.id);
     }
+  }
 
-    seen.set(key, bug.id);
+  // Тип бага с эндпоинтом «*» не должен принадлежать никому больше: такой баг
+  // засчитывается на любом эндпоинте, и совпадение с конкретным сделало бы
+  // результат зависящим от порядка перебора.
+  for (const wide of list.filter((bug) => bug.endpoint === '*')) {
+    for (const type of wide.types) {
+      const clash = list.find(
+        (bug) => bug.id !== wide.id && bug.types.includes(type),
+      );
+      if (clash !== undefined) {
+        throw new Error(
+          `Каталог багов: тип "${type}" бага ${wide.id} с эндпоинтом "*" ` +
+            `занят также багом ${clash.id} (${clash.endpoint}). Тип ` +
+            'общего бага обязан быть только у него.',
+        );
+      }
+    }
   }
 }
 

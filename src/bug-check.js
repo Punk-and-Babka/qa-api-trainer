@@ -9,20 +9,37 @@ export const DUPLICATE = 'duplicate';
 export const REJECTED = 'rejected';
 
 // Баг опознаётся по паре «эндпоинт + тип дефекта». Уникальность этой пары —
-// инвариант каталога, он проверяется в users.bugs.js при импорте модуля.
-// Поэтому find() здесь заведомо возвращает не больше одного совпадения.
+// инвариант каталога, он проверяется в users.bugs.js при импорте модуля,
+// поэтому find() заведомо возвращает не больше одного совпадения.
+//
+// Сначала ищется точное совпадение по эндпоинту, и только потом — баг с
+// эндпоинтом «*». Порядок важен: «*» означает «во всех ответах», и если бы он
+// проверялся первым, то перехватывал бы репорты по конкретным эндпоинтам.
+// Сам поиск по «*» нужен потому, что общий дефект студент видит в ответе
+// конкретного запроса и логично репортит именно туда.
 export function checkReport(report, bugs, foundIds) {
-  const bug = bugs.find(
-    (item) => item.endpoint === report.endpoint && item.type === report.type,
+  const exact = bugs.find(
+    (item) => item.endpoint === report.endpoint && item.types.includes(report.type),
   );
+  const wide = bugs.find(
+    (item) => item.endpoint === '*' && item.types.includes(report.type),
+  );
+  const bug = exact ?? wide;
 
   if (bug === undefined) {
-    return { verdict: REJECTED, bugId: null };
+    // Промах рядом: на этом эндпоинте ненайденный дефект есть, но тип выбран
+    // не тот. Сообщить об этом честнее, чем сухое «не совпало» — иначе
+    // студент решит, что ошибся в самом наблюдении, и перестанет копать там,
+    // где копал правильно. Какой именно тип, не называется.
+    const nearMiss = bugs.some(
+      (item) => item.endpoint === report.endpoint && !foundIds.includes(item.id),
+    );
+    return { verdict: REJECTED, bugId: null, nearMiss };
   }
   if (foundIds.includes(bug.id)) {
-    return { verdict: DUPLICATE, bugId: bug.id };
+    return { verdict: DUPLICATE, bugId: bug.id, nearMiss: false };
   }
-  return { verdict: ACCEPTED, bugId: bug.id };
+  return { verdict: ACCEPTED, bugId: bug.id, nearMiss: false };
 }
 
 // Список эндпоинтов для выпадающего поля формы. Собирается из контракта, а не
