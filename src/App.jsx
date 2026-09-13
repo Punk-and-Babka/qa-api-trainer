@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import SpecPanel from './components/SpecPanel.jsx';
 import RequestBuilder from './components/RequestBuilder.jsx';
 import ResponseViewer from './components/ResponseViewer.jsx';
@@ -14,6 +14,7 @@ import { BUG_TYPES } from './mock-api/bug-types.js';
 import { checkReport, endpointOptions, foundBugIds } from './bug-check.js';
 import { checkResponse } from './schema-check.js';
 import { runTests } from './pm-runtime.js';
+import { load, save, clear } from './storage.js';
 import { handle } from './mock-api/server.js';
 import { resetState } from './mock-api/state.js';
 
@@ -78,10 +79,25 @@ function parseBody(text) {
   }
 }
 
+// Снимок читается один раз при загрузке модуля, до первого рендера. В теле
+// компонента это выполнялось бы на каждый рендер, а данные всё равно нужны
+// только для начальных значений.
+const SAVED = load();
+
+// Наибольший из сохранённых id. Счётчики надо продолжить с него, иначе после
+// перезагрузки новые записи получат id, уже занятые старыми, и React начнёт
+// путать элементы списка: key обязан быть уникальным.
+function maxId(list) {
+  return list.reduce((max, item) => Math.max(max, item.id), 0);
+}
+
 export default function App() {
-  const [method, setMethod] = useState('GET');
-  const [path, setPath] = useState('/users');
-  const [bodyText, setBodyText] = useState('');
+  // Восстановленные значения подставляются как начальные. Оператор ?? берёт
+  // умолчание только на null и undefined — пустая строка тела и пустые списки
+  // сохраняются как есть, а не заменяются умолчанием.
+  const [method, setMethod] = useState(SAVED?.method ?? 'GET');
+  const [path, setPath] = useState(SAVED?.path ?? '/users');
+  const [bodyText, setBodyText] = useState(SAVED?.bodyText ?? '');
   const [response, setResponse] = useState(null);
   // Метод и путь запроса, на который пришёл текущий ответ. Хранятся отдельно
   // от полей конструктора: студент вправе поменять путь после отправки, и
@@ -89,19 +105,36 @@ export default function App() {
   // спрашивали, а не с тем, что сейчас набрано в поле.
   const [answered, setAnswered] = useState(null);
   const [schemaResult, setSchemaResult] = useState(null);
-  const [testScript, setTestScript] = useState(DEFAULT_SCRIPT);
+  const [testScript, setTestScript] = useState(SAVED?.testScript ?? DEFAULT_SCRIPT);
   const [testRun, setTestRun] = useState(null);
   const [pending, setPending] = useState(false);
-  const [history, setHistory] = useState([]);
+  const [history, setHistory] = useState(SAVED?.history ?? []);
   const [resetAt, setResetAt] = useState(null);
-  const [reports, setReports] = useState([]);
-  const [revealedHints, setRevealedHints] = useState([]);
+  const [reports, setReports] = useState(SAVED?.reports ?? []);
+  const [revealedHints, setRevealedHints] = useState(SAVED?.revealedHints ?? []);
 
   // Счётчик для key элементов истории. useRef, а не useState: значение должно
   // переживать перерисовки, но его изменение само по себе перерисовку не
   // требует. Менять .current прямо в рендере нельзя — только в обработчиках.
-  const entryId = useRef(0);
-  const reportId = useRef(0);
+  const entryId = useRef(maxId(SAVED?.history ?? []));
+  const reportId = useRef(maxId(SAVED?.reports ?? []));
+
+  // Сохранение с задержкой в 300 мс. Без неё каждый символ, набранный в
+  // скрипте, вызывал бы запись в localStorage — операция синхронная, она
+  // блокирует поток. Возвращаемая функция — уборка эффекта: React вызывает её
+  // перед следующим запуском, поэтому предыдущий отложенный вызов отменяется,
+  // и запись происходит один раз через 300 мс после последнего изменения.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      save({ method, path, bodyText, testScript, history, reports, revealedHints });
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [method, path, bodyText, testScript, history, reports, revealedHints]);
+
+  // Ответ, разобранный запрос и результаты проверок сознательно не
+  // сохраняются: ответ относится к состоянию сервера, которого после
+  // перезагрузки уже нет — сервер поднимается заново из SEED_USERS.
 
   // Производные значения, а не состояние: они однозначно вычисляются из path
   // и bodyText. Держать их в useState значило бы хранить одну и ту же правду
@@ -221,6 +254,34 @@ export default function App() {
     setResetAt(new Date().toLocaleTimeString('ru-RU'));
   }
 
+  // Полный сброс: и сервер, и всё сохранённое. Подтверждение здесь не
+  // формальность — тестовый скрипт пишут руками, и стереть его случайно
+  // обиднее всего.
+  function startOver() {
+    const confirmed = window.confirm(
+      'Будут стёрты: тестовый скрипт, история запросов, найденные баги и подсказки. Начать заново?',
+    );
+    if (!confirmed) return;
+
+    clear();
+    setMethod('GET');
+    setPath('/users');
+    setBodyText('');
+    setTestScript(DEFAULT_SCRIPT);
+    setHistory([]);
+    setReports([]);
+    setRevealedHints([]);
+    setResponse(null);
+    setAnswered(null);
+    setSchemaResult(null);
+    setTestRun(null);
+    entryId.current = 0;
+    reportId.current = 0;
+    resetServer();
+    // Эффект сохранения через 300 мс запишет поверх чистый снимок — так и
+    // задумано: очистка нужна на случай, если вкладку закроют раньше.
+  }
+
   return (
     <div className="app">
       <header className="app__header">
@@ -235,6 +296,9 @@ export default function App() {
           ) : null}
           <button className="app__reset" type="button" onClick={resetServer}>
             Сбросить состояние сервера
+          </button>
+          <button className="app__reset" type="button" onClick={startOver}>
+            Начать заново
           </button>
         </div>
       </header>
