@@ -13,6 +13,7 @@ import TaskList from './components/TaskList.jsx';
 import HelpBlock from './components/HelpBlock.jsx';
 import Section from './components/Section.jsx';
 import Splitter from './components/Splitter.jsx';
+import ModeSwitch from './components/ModeSwitch.jsx';
 import {
   DEFAULT_COLUMNS,
   SPLITTER_PX,
@@ -30,6 +31,7 @@ import { load, save, clear } from './storage.js';
 import { applyVariables, mergeVariables, nextId, toObject } from './variables.js';
 import { plural } from './plural.js';
 import { REFERENCE } from './reference.js';
+import { isToolEnabled, sanitizeMode } from './modes.js';
 import { handle } from './mock-api/server.js';
 import { resetState } from './mock-api/state.js';
 
@@ -135,6 +137,7 @@ export default function App() {
   const [columns, setColumns] = useState(() => sanitizeColumns(SAVED?.columns));
   // Пока тянут разделитель, выделение текста в панелях только мешает.
   const [resizing, setResizing] = useState(false);
+  const [mode, setMode] = useState(() => sanitizeMode(SAVED?.mode));
 
   // Ссылка на сетку колонок нужна, чтобы узнать её ширину в пикселях: доли
   // сами по себе не говорят, сколько пикселей в одной доле.
@@ -174,6 +177,7 @@ export default function App() {
         testsOpen,
         historyOpen,
         columns,
+        mode,
       });
     }, 300);
 
@@ -194,6 +198,7 @@ export default function App() {
     testsOpen,
     historyOpen,
     columns,
+    mode,
   ]);
 
   // Ответ, разобранный запрос и результаты проверок сознательно не
@@ -203,10 +208,19 @@ export default function App() {
   // Производные значения, а не состояние: они однозначно вычисляются из path
   // и bodyText. Держать их в useState значило бы хранить одну и ту же правду
   // дважды и ловить рассинхрон.
+  // Инструменты текущего режима. Вычисляются при рендере: это производное от
+  // mode, хранить его отдельно значило бы держать одну правду дважды.
+  const schemaEnabled = isToolEnabled(mode, 'schema');
+  const testsEnabled = isToolEnabled(mode, 'tests');
+  const varsEnabled = isToolEnabled(mode, 'variables');
+
   // Подстановка идёт до разбора, и порядок здесь принципиален: тело
   // {"id": {{userId}}} невалидно как JSON и становится валидным только после
   // замены. Postman работает так же — подстановка чисто текстовая.
-  const values = toObject(variables);
+  // Вне режима с переменными подстановка не работает вовсе. Иначе сохранённые
+  // с прошлого раза значения молча подставлялись бы в запрос, а таблицы, где
+  // это видно, на экране не было бы.
+  const values = varsEnabled ? toObject(variables) : {};
   const resolvedPath = applyVariables(path, values);
   const resolvedBody = applyVariables(bodyText, values);
 
@@ -273,12 +287,16 @@ export default function App() {
       // Тесты прогоняются сами, как в Postman. Скрипт берётся тот, что был на
       // момент отправки: правка поля во время ожидания ответа не должна менять
       // то, что прогоняется по этому ответу.
-      const run = runTests(testScript, result, toObject(variables));
-      setTestRun(run);
-      // Скрипт мог сохранить значение из ответа — это и есть цепочка запросов.
-      // Функциональная форма: между отправкой и ответом таблицу могли править
-      // руками, и затирать эту правку целиком снимком нельзя.
-      setVariables((current) => mergeVariables(current, run.variables));
+      // Скрипт не выполняется, когда панель Tests скрыта: запускать код
+      // незаметно для пользователя нельзя, даже написанный им самим.
+      if (testsEnabled) {
+        const run = runTests(testScript, result, values);
+        setTestRun(run);
+        // Скрипт мог сохранить значение из ответа — это и есть цепочка
+        // запросов. Функциональная форма: между отправкой и ответом таблицу
+        // могли править руками, и затирать эту правку снимком нельзя.
+        setVariables((current) => mergeVariables(current, run.variables));
+      }
       setPending(false);
       // Новое сверху. Сравнение с прошлым запросом — самое частое действие,
       // и ради него не должно приходиться прокручивать список.
@@ -327,7 +345,7 @@ export default function App() {
   function rerunTests() {
     if (response === null) return;
 
-    const run = runTests(testScript, response, toObject(variables));
+    const run = runTests(testScript, response, values);
     setTestRun(run);
     setVariables((current) => mergeVariables(current, run.variables));
   }
@@ -400,6 +418,7 @@ export default function App() {
     setTestsOpen(true);
     setHistoryOpen(true);
     setColumns(DEFAULT_COLUMNS);
+    setMode(sanitizeMode(null));
     setResponse(null);
     setAnswered(null);
     setSchemaResult(null);
@@ -416,6 +435,8 @@ export default function App() {
       <header className="app__header">
         <h1 className="app__title">QA API Trainer</h1>
         <span className="app__scenario">сценарий: {usersContract.title}</span>
+        <ModeSwitch mode={mode} onChange={setMode} />
+
         <div className="app__actions">
           <span className="app__score">
             найдено {foundIds.length} из {bugs.length}
@@ -447,7 +468,7 @@ export default function App() {
             open={helpOpen}
             onToggle={() => setHelpOpen((current) => !current)}
           >
-            <HelpBlock />
+            <HelpBlock mode={mode} />
           </Section>
 
           <Section
@@ -457,7 +478,7 @@ export default function App() {
             open={tasksOpen}
             onToggle={() => setTasksOpen((current) => !current)}
           >
-            <TaskList tasks={usersTasks} foundIds={foundIds} />
+            <TaskList tasks={usersTasks} foundIds={foundIds} mode={mode} />
           </Section>
 
           <Section
@@ -505,45 +526,49 @@ export default function App() {
             />
           </Section>
 
-          <Section
-            title="Переменные"
-            summary={
-              variables.length === 0
-                ? null
-                : `${variables.length} ${plural(variables.length, [
-                    'переменная',
-                    'переменные',
-                    'переменных',
-                  ])}`
-            }
-            lead="Для цепочек: значение из одного ответа подставляется в следующий запрос."
-            reference={REFERENCE.variables}
-            open={varsOpen}
-            onToggle={() => setVarsOpen((current) => !current)}
-          >
-            <EnvPanel
-              variables={variables}
-              onChange={changeVariable}
-              onAdd={addVariable}
-              onRemove={removeVariable}
-            />
-          </Section>
+          {varsEnabled ? (
+            <Section
+              title="Переменные"
+              summary={
+                variables.length === 0
+                  ? null
+                  : `${variables.length} ${plural(variables.length, [
+                      'переменная',
+                      'переменные',
+                      'переменных',
+                    ])}`
+              }
+              lead="Для цепочек: значение из одного ответа подставляется в следующий запрос."
+              reference={REFERENCE.variables}
+              open={varsOpen}
+              onToggle={() => setVarsOpen((current) => !current)}
+            >
+              <EnvPanel
+                variables={variables}
+                onChange={changeVariable}
+                onAdd={addVariable}
+                onRemove={removeVariable}
+              />
+            </Section>
+          ) : null}
 
-          <Section
-            title="Tests"
-            summary={testRun === null ? null : `${testsPassed} / ${testRun.tests.length}`}
-            lead="JavaScript. Тест падает, если функция бросила исключение."
-            reference={REFERENCE.tests}
-            open={testsOpen}
-            onToggle={() => setTestsOpen((current) => !current)}
-          >
-            <TestsEditor
-              script={testScript}
-              canRun={response !== null && !pending}
-              onChange={setTestScript}
-              onRun={rerunTests}
-            />
-          </Section>
+          {testsEnabled ? (
+            <Section
+              title="Tests"
+              summary={testRun === null ? null : `${testsPassed} / ${testRun.tests.length}`}
+              lead="JavaScript. Тест падает, если функция бросила исключение."
+              reference={REFERENCE.tests}
+              open={testsOpen}
+              onToggle={() => setTestsOpen((current) => !current)}
+            >
+              <TestsEditor
+                script={testScript}
+                canRun={response !== null && !pending}
+                onChange={setTestScript}
+                onRun={rerunTests}
+              />
+            </Section>
+          ) : null}
 
           <Section
             title="История"
@@ -576,24 +601,28 @@ export default function App() {
             <ResponseViewer response={response} pending={pending} />
           </Section>
 
-          <Section
-            title="Результаты тестов"
-            summary={testRun === null ? null : `${testsPassed} / ${testRun.tests.length}`}
-          >
-            <TestResults run={testRun} />
-          </Section>
+          {testsEnabled ? (
+            <Section
+              title="Результаты тестов"
+              summary={testRun === null ? null : `${testsPassed} / ${testRun.tests.length}`}
+            >
+              <TestResults run={testRun} />
+            </Section>
+          ) : null}
 
-          <Section
-            title="Проверка по схеме"
-            lead="Сверяет тело с моделью из спецификации. Видит не всё."
-            reference={REFERENCE.schema}
-          >
-            <SchemaCheck
-              result={schemaResult}
-              canCheck={response !== null && !pending}
-              onCheck={runSchemaCheck}
-            />
-          </Section>
+          {schemaEnabled ? (
+            <Section
+              title="Проверка по схеме"
+              lead="Сверяет тело с моделью из спецификации. Видит не всё."
+              reference={REFERENCE.schema}
+            >
+              <SchemaCheck
+                result={schemaResult}
+                canCheck={response !== null && !pending}
+                onCheck={runSchemaCheck}
+              />
+            </Section>
+          ) : null}
 
           <Section
             title="Баг-репорт"

@@ -1405,3 +1405,57 @@ body {
 .layout--resizing .splitter {
   background: var(--accent);
 }
+
+/* ---------- переключатель режима ---------- */
+
+.modes {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Кнопки вплотную, одной группой: три ступени читаются как шкала, а не как
+   три независимых действия. */
+.modes__buttons {
+  display: flex;
+}
+
+.modes__button {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-right-width: 0;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.modes__button:first-child {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+.modes__button:last-child {
+  border-right-width: 1px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.modes__button:hover {
+  color: var(--text);
+}
+
+.modes__button--on {
+  color: var(--accent);
+  background: var(--accent-bg);
+  font-weight: 600;
+}
+
+.modes__note {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

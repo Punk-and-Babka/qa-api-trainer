@@ -1,11 +1,24 @@
 import { TASK_TOOLS } from '../mock-api/scenarios/users.tasks.js';
 import { plural } from '../plural.js';
+import { TASK_TOOL_NEEDS, isToolEnabled } from '../modes.js';
 
 // Список заданий. Отметка о выполнении не хранится: задание закрыто, когда
 // засчитаны все связанные с ним баги, и это вычисляется при рендере из уже
 // существующего списка найденного.
 
-export default function TaskList({ tasks, foundIds }) {
+export default function TaskList({ tasks, foundIds, mode }) {
+  // В ручном режиме инструменты автоматизации скрыты, и обещать их в задании
+  // нельзя. Задание при этом остаётся решаемым: все дефекты находятся глазами,
+  // поэтому вместо скрытых бейджей показывается «глазами».
+  function visibleTools(task) {
+    const shown = task.tools.filter((tool) => {
+      const needs = TASK_TOOL_NEEDS[tool];
+      return needs === null || isToolEnabled(mode, needs);
+    });
+
+    return shown.length > 0 ? shown : ['eye'];
+  }
+
   const doneCount = (task) => task.bugIds.filter((id) => foundIds.includes(id)).length;
   const isDone = (task) => doneCount(task) === task.bugIds.length;
   const done = tasks.filter(isDone).length;
@@ -35,7 +48,7 @@ export default function TaskList({ tasks, foundIds }) {
               </div>
 
               <div className="task__badges">
-                {task.tools.map((tool) => (
+                {visibleTools(task).map((tool) => (
                   <span
                     key={tool}
                     className={`badge badge--${TASK_TOOLS[tool].modifier}`}
