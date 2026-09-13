@@ -11,6 +11,7 @@ import TestResults from './components/TestResults.jsx';
 import EnvPanel from './components/EnvPanel.jsx';
 import TaskList from './components/TaskList.jsx';
 import HelpBlock from './components/HelpBlock.jsx';
+import Section from './components/Section.jsx';
 import { usersContract } from './mock-api/scenarios/users.contract.js';
 import { bugs } from './mock-api/scenarios/users.bugs.js';
 import { usersTasks } from './mock-api/scenarios/users.tasks.js';
@@ -116,6 +117,7 @@ export default function App() {
   // Справка открыта при первом заходе и закрывается насовсем, когда её
   // свернули: сохранённое значение читается из снимка.
   const [helpOpen, setHelpOpen] = useState(SAVED?.helpOpen ?? true);
+  const [tasksOpen, setTasksOpen] = useState(SAVED?.tasksOpen ?? true);
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState(SAVED?.history ?? []);
   const [resetAt, setResetAt] = useState(null);
@@ -145,6 +147,7 @@ export default function App() {
         revealedHints,
         variables,
         helpOpen,
+        tasksOpen,
       });
     }, 300);
 
@@ -159,6 +162,7 @@ export default function App() {
     revealedHints,
     variables,
     helpOpen,
+    tasksOpen,
   ]);
 
   // Ответ, разобранный запрос и результаты проверок сознательно не
@@ -186,6 +190,12 @@ export default function App() {
   // То же самое для найденных багов: они однозначно восстанавливаются из ленты
   // репортов, поэтому отдельным состоянием не хранятся.
   const foundIds = foundBugIds(reports);
+
+  // Число закрытых заданий нужно и панели, и её заголовку: в свёрнутом виде
+  // это единственное, что от заданий остаётся видно.
+  const doneTasks = usersTasks.filter((task) =>
+    task.bugIds.every((id) => foundIds.includes(id)),
+  ).length;
 
   function send() {
     if (parsedBody.error !== null || pending) {
@@ -336,6 +346,7 @@ export default function App() {
     setRevealedHints([]);
     setVariables([]);
     setHelpOpen(true);
+    setTasksOpen(true);
     setResponse(null);
     setAnswered(null);
     setSchemaResult(null);
@@ -370,14 +381,23 @@ export default function App() {
 
       <main className="layout">
         <section className="panel panel--spec">
-          <HelpBlock open={helpOpen} onToggle={() => setHelpOpen((current) => !current)} />
+          <Section
+            title="Как этим пользоваться"
+            open={helpOpen}
+            onToggle={() => setHelpOpen((current) => !current)}
+          >
+            <HelpBlock />
+          </Section>
 
-          <h2 className="panel__title panel__title--spaced">Задания</h2>
-          <p className="panel__lead">
-            Порядок произвольный. Задание закрывается само, когда засчитан
-            связанный с ним баг-репорт.
-          </p>
-          <TaskList tasks={usersTasks} foundIds={foundIds} />
+          <Section
+            title="Задания"
+            summary={`${doneTasks} / ${usersTasks.length}`}
+            lead="Порядок произвольный. Задание закрывается само, когда засчитан связанный с ним баг-репорт."
+            open={tasksOpen}
+            onToggle={() => setTasksOpen((current) => !current)}
+          >
+            <TaskList tasks={usersTasks} foundIds={foundIds} />
+          </Section>
 
           <h2 className="panel__title panel__title--spaced">Спецификация</h2>
           <p className="panel__lead">
