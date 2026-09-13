@@ -12,7 +12,11 @@ export const bugs = [
   {
     id: 'O1',
     endpoint: 'POST /orders',
-    types: ['data-consistency'],
+    // Два типа: округление — суть дефекта, несогласованность — то, как он
+    // выглядит снаружи (total не равен subtotal − discount). Тип
+    // "calculation" здесь намеренно не указан: он занят O4, и до разделения
+    // типов репорт про копейки засчитывался как дефект промокода.
+    types: ['rounding', 'data-consistency'],
     title: 'total округляется вниз до целого рубля и не сходится с subtotal − discount',
     hint: 'Сложи price × qty по позициям сам и сравни с total. Смотри на копейки',
   },

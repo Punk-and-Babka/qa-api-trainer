@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { SCENARIOS } from '../src/mock-api/scenarios/index.js';
 import { TASK_TOOLS } from '../src/mock-api/task-tools.js';
 import { BUG_TYPES } from '../src/mock-api/bug-types.js';
-import { endpointOptions } from '../src/bug-check.js';
+import { checkReport, endpointOptions } from '../src/bug-check.js';
 
 test('каталог загружается: инвариант уникальности пар не нарушен', () => {
   for (const scenario of SCENARIOS) {
@@ -175,4 +175,24 @@ test('схемы не описывают эндпоинтов, которых н
       assert.ok(routes.has(route), `схема для ${route}, которого нет в спецификации`);
     }
   }
+});
+
+// Регрессия на конкретную ошибку, найденную прохождением Orders (v0.5a).
+//
+// O1 (копейки в total отброшены) и O4 (промокод считается от каждой позиции)
+// живут на одном эндпоинте и оба про арифметику. Пока оба описывались типом
+// "расчёт", сверка засчитывала репорт про округление как дефект промокода:
+// пары «эндпоинт + тип» оставались уникальными, поэтому инвариант уникальности
+// молчал, а студент получал «зачтено» с чужой эталонной формулировкой.
+//
+// Проверка написана на конкретные идентификаторы намеренно: это не общий
+// инвариант, а именно та пара дефектов, которую однажды уже перепутали.
+test('арифметические дефекты Orders различимы по типу', () => {
+  const orders = SCENARIOS.find((scenario) => scenario.id === 'orders');
+
+  const byType = (type) =>
+    checkReport({ endpoint: 'POST /orders', type, description: '' }, orders.bugs, []).bugId;
+
+  assert.equal(byType('rounding'), 'O1', 'округление обязано опознаваться как O1');
+  assert.equal(byType('calculation'), 'O4', 'неверная база скидки обязана опознаваться как O4');
 });
