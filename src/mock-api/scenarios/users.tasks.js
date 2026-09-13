@@ -18,14 +18,7 @@
 // бейджи, а подписи лежат рядом в TASK_TOOLS.
 
 import { bugs } from './users.bugs.js';
-
-// Справочник инструментов: подпись для бейджа и модификатор класса для цвета.
-export const TASK_TOOLS = {
-  eye: { label: 'глазами', modifier: 'eye' },
-  schema: { label: 'схема', modifier: 'schema' },
-  tests: { label: 'Tests', modifier: 'tests' },
-  chain: { label: 'цепочка', modifier: 'chain' },
-};
+import { TASK_TOOLS } from '../task-tools.js';
 
 export const usersTasks = [
   {

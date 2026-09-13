@@ -1,7 +1,3 @@
-import { usersRoutes } from './scenarios/users.handlers.js';
-
-const routes = usersRoutes;
-
 // Сопоставление пути с шаблоном вида "/users/:id".
 // Экспортируется: тем же матчингом пользуется проверка ответа по схеме, ей
 // нужно понять, какому эндпоинту спецификации соответствует "/users/1".
@@ -44,7 +40,10 @@ function finish(result) {
   };
 }
 
-export function handle(request) {
+// Маршруты приходят аргументом, а не берутся из импорта: сценариев несколько,
+// и роутер обязан оставаться про них не знающим. Вызывающий код берёт routes
+// из реестра сценариев.
+export function handle(request, routes) {
   const method = (request.method || 'GET').toUpperCase();
   const path = request.path || '/';
   const query = request.query || {};

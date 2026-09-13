@@ -7,7 +7,7 @@ import {
   nextId,
   brokenTimestamp,
   fakeHash,
-} from '../state.js';
+} from './users.state.js';
 
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 100;

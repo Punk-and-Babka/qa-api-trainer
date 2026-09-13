@@ -9,10 +9,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handle } from '../src/mock-api/server.js';
-import { resetState } from '../src/mock-api/state.js';
+import { usersRoutes } from '../src/mock-api/scenarios/users.handlers.js';
+import { resetUsers as resetState } from '../src/mock-api/scenarios/users.state.js';
 
 function request(method, path, body = null, query = {}) {
-  return handle({ method, path, query, headers: {}, body });
+  return handle({ method, path, query, headers: {}, body }, usersRoutes);
 }
 
 test('роутер: неизвестный путь даёт 404 с телом об ошибке', () => {

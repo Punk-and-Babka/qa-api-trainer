@@ -14,25 +14,28 @@ import {
   validateAgainst,
 } from '../src/schema-check.js';
 import { handle } from '../src/mock-api/server.js';
-import { resetState } from '../src/mock-api/state.js';
+import { findScenario } from '../src/mock-api/scenarios/index.js';
+
+const users = findScenario('users');
+const resetState = users.reset;
 
 function request(method, path, body = null, query = {}) {
-  return handle({ method, path, query, headers: {}, body });
+  return handle({ method, path, query, headers: {}, body }, users.routes);
 }
 
 test('путь с параметром сопоставляется с шаблоном спецификации', () => {
-  assert.equal(findRoute('GET', '/users/1'), 'GET /users/:id');
-  assert.equal(findRoute('GET', '/users'), 'GET /users');
-  assert.equal(findRoute('DELETE', '/users/42'), 'DELETE /users/:id');
-  assert.equal(findRoute('GET', '/orders'), null);
+  assert.equal(findRoute(users, 'GET', '/users/1'), 'GET /users/:id');
+  assert.equal(findRoute(users, 'GET', '/users'), 'GET /users');
+  assert.equal(findRoute(users, 'DELETE', '/users/42'), 'DELETE /users/:id');
+  assert.equal(findRoute(users, 'GET', '/orders'), null);
   // Метод — часть совпадения: у одного пути разные методы это разные эндпоинты.
-  assert.equal(findRoute('PATCH', '/users/1'), null);
+  assert.equal(findRoute(users, 'PATCH', '/users/1'), null);
 });
 
 test('неизвестный эндпоинт: сверять не с чем', () => {
   resetState();
   const response = request('GET', '/orders');
-  const result = checkResponse('GET', '/orders', response);
+  const result = checkResponse(users, 'GET', '/orders', response);
 
   assert.equal(result.verdict, NO_ENDPOINT);
   assert.equal(result.route, null);
@@ -42,7 +45,7 @@ test('статус, не описанный спецификацией, даёт
   resetState();
   // B1: POST отвечает 200 вместо 201, поэтому схемы для ответа нет.
   const response = request('POST', '/users', { email: 'new@example.io', name: 'Новый' });
-  const result = checkResponse('POST', '/users', response);
+  const result = checkResponse(users, 'POST', '/users', response);
 
   assert.equal(result.verdict, NO_SCHEMA);
   assert.equal(result.route, 'POST /users');
@@ -53,7 +56,7 @@ test('статус, не описанный спецификацией, даёт
 test('корректный ответ проходит схему', () => {
   resetState();
   const response = request('GET', '/users', null, { limit: '0abc' });
-  const result = checkResponse('GET', '/users', response);
+  const result = checkResponse(users, 'GET', '/users', response);
 
   // limit не число — сервер отвечает 400 с телом об ошибке, и это по спеке.
   assert.equal(response.status, 400);
@@ -63,7 +66,7 @@ test('корректный ответ проходит схему', () => {
 test('схема ловит отсутствие поля role в элементах списка', () => {
   resetState();
   const response = request('GET', '/users');
-  const result = checkResponse('GET', '/users', response);
+  const result = checkResponse(users, 'GET', '/users', response);
 
   assert.equal(result.verdict, INVALID);
   assert.ok(
@@ -75,7 +78,7 @@ test('схема ловит отсутствие поля role в элемент
 test('схема ловит дату не по ISO 8601', () => {
   resetState();
   const response = request('GET', '/users/1');
-  const result = checkResponse('GET', '/users/1', response);
+  const result = checkResponse(users, 'GET', '/users/1', response);
 
   assert.equal(result.verdict, INVALID);
   assert.ok(
@@ -88,7 +91,7 @@ test('схема ловит тело null вместо объекта', () => {
   resetState();
   // B8: несуществующий id даёт 200 и null вместо 404.
   const response = request('GET', '/users/99999');
-  const result = checkResponse('GET', '/users/99999', response);
+  const result = checkResponse(users, 'GET', '/users/99999', response);
 
   assert.equal(result.verdict, INVALID);
   assert.ok(result.errors.some((error) => error.path === '/'));

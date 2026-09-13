@@ -20,10 +20,12 @@ import {
   resizeColumns,
   sanitizeColumns,
 } from './columns.js';
-import { usersContract } from './mock-api/scenarios/users.contract.js';
-import { bugs } from './mock-api/scenarios/users.bugs.js';
-import { usersTasks } from './mock-api/scenarios/users.tasks.js';
 import { BUG_TYPES } from './mock-api/bug-types.js';
+import {
+  SCENARIOS,
+  findScenario,
+  sanitizeScenario,
+} from './mock-api/scenarios/index.js';
 import { checkReport, endpointOptions, foundBugIds } from './bug-check.js';
 import { checkResponse } from './schema-check.js';
 import { runTests } from './pm-runtime.js';
@@ -33,13 +35,8 @@ import { plural } from './plural.js';
 import { REFERENCE } from './reference.js';
 import { isToolEnabled, sanitizeMode } from './modes.js';
 import { handle } from './mock-api/server.js';
-import { resetState } from './mock-api/state.js';
 
 const REQUEST_HEADERS = { 'Content-Type': 'application/json' };
-
-// Список эндпоинтов для формы считается из контракта один раз на загрузку
-// модуля, а не при каждом рендере: контракт — константа, пересчитывать нечего.
-const REPORT_ENDPOINTS = endpointOptions(usersContract);
 
 
 // Стартовый скрипт: он же короткая документация по доступному API. Пустое поле
@@ -109,6 +106,23 @@ function maxId(list) {
   return list.reduce((max, item) => Math.max(max, item.id), 0);
 }
 
+// Скрипты и переменные — свои у каждого сценария: тест, написанный под Users,
+// на ответах Orders бессмыслен, а прогонялся бы он автоматически.
+//
+// Ранние снимки хранили один скрипт строкой, до появления второго сценария.
+// Такое значение переносится в сценарий users, а не выбрасывается: поднимать
+// версию снимка ради совместимого расширения значило бы стереть чужую работу
+// на ровном месте.
+function migrateScripts(saved) {
+  if (typeof saved?.testScript === 'string') return { users: saved.testScript };
+  return saved?.scripts ?? {};
+}
+
+function migrateVariables(saved) {
+  if (Array.isArray(saved?.variables)) return { users: saved.variables };
+  return saved?.variablesByScenario ?? {};
+}
+
 export default function App() {
   // Восстановленные значения подставляются как начальные. Оператор ?? берёт
   // умолчание только на null и undefined — пустая строка тела и пустые списки
@@ -123,9 +137,12 @@ export default function App() {
   // спрашивали, а не с тем, что сейчас набрано в поле.
   const [answered, setAnswered] = useState(null);
   const [schemaResult, setSchemaResult] = useState(null);
-  const [testScript, setTestScript] = useState(SAVED?.testScript ?? DEFAULT_SCRIPT);
   const [testRun, setTestRun] = useState(null);
-  const [variables, setVariables] = useState(SAVED?.variables ?? []);
+  // Оба словаря — «сценарий → значение». Отсутствующий ключ означает
+  // «студент сюда ещё не заходил», и подставляется умолчание.
+  const [scripts, setScripts] = useState(() => migrateScripts(SAVED));
+  const [variablesByScenario, setVariablesByScenario] = useState(() => migrateVariables(SAVED));
+  const [scenarioId, setScenarioId] = useState(() => sanitizeScenario(SAVED?.scenario));
   // Справка открыта при первом заходе и закрывается насовсем, когда её
   // свернули: сохранённое значение читается из снимка.
   const [helpOpen, setHelpOpen] = useState(SAVED?.helpOpen ?? true);
@@ -154,6 +171,30 @@ export default function App() {
   const entryId = useRef(maxId(SAVED?.history ?? []));
   const reportId = useRef(maxId(SAVED?.reports ?? []));
 
+  // Активный сценарий и всё, что из него следует. Производные значения, а не
+  // состояние: они однозначно вычисляются из scenarioId.
+  const scenario = findScenario(scenarioId);
+  const bugs = scenario.bugs;
+  const tasks = scenario.tasks;
+  const reportEndpoints = endpointOptions(scenario.contract);
+
+  // Скрипт и переменные текущего сценария. Обёртки над словарями выглядят как
+  // обычные setState, поэтому остальной код о разделении по сценариям не знает.
+  const testScript = scripts[scenarioId] ?? DEFAULT_SCRIPT;
+  const variables = variablesByScenario[scenarioId] ?? [];
+
+  function setTestScript(value) {
+    setScripts((current) => ({ ...current, [scenarioId]: value }));
+  }
+
+  function setVariables(updater) {
+    setVariablesByScenario((current) => ({
+      ...current,
+      [scenarioId]:
+        typeof updater === 'function' ? updater(current[scenarioId] ?? []) : updater,
+    }));
+  }
+
   // Сохранение с задержкой в 300 мс. Без неё каждый символ, набранный в
   // скрипте, вызывал бы запись в localStorage — операция синхронная, она
   // блокирует поток. Возвращаемая функция — уборка эффекта: React вызывает её
@@ -165,11 +206,12 @@ export default function App() {
         method,
         path,
         bodyText,
-        testScript,
+        scripts,
         history,
         reports,
         revealedHints,
-        variables,
+        variablesByScenario,
+        scenario: scenarioId,
         helpOpen,
         tasksOpen,
         specOpen,
@@ -186,11 +228,12 @@ export default function App() {
     method,
     path,
     bodyText,
-    testScript,
+    scripts,
     history,
     reports,
     revealedHints,
-    variables,
+    variablesByScenario,
+    scenarioId,
     helpOpen,
     tasksOpen,
     specOpen,
@@ -234,11 +277,19 @@ export default function App() {
 
   // То же самое для найденных багов: они однозначно восстанавливаются из ленты
   // репортов, поэтому отдельным состоянием не хранятся.
-  const foundIds = foundBugIds(reports);
+  // Прогресс считается по текущему сценарию: id дефектов уникальны между
+  // сценариями, поэтому достаточно отфильтровать общий список найденного.
+  const scenarioBugIds = new Set(bugs.map((bug) => bug.id));
+  const foundIds = foundBugIds(reports).filter((id) => scenarioBugIds.has(id));
+
+  // Репорты и история тоже показываются только для текущего сценария. Записи
+  // из ранних версий сценария не знают — они все относятся к users.
+  const scenarioReports = reports.filter((report) => (report.scenario ?? 'users') === scenarioId);
+  const scenarioHistory = history.filter((entry) => (entry.scenario ?? 'users') === scenarioId);
 
   // Число закрытых заданий нужно и панели, и её заголовку: в свёрнутом виде
   // это единственное, что от заданий остаётся видно.
-  const doneTasks = usersTasks.filter((task) =>
+  const doneTasks = tasks.filter((task) =>
     task.bugIds.every((id) => foundIds.includes(id)),
   ).length;
 
@@ -259,7 +310,7 @@ export default function App() {
       query: parsedPath.query,
       headers: REQUEST_HEADERS,
       body: parsedBody.value,
-    });
+    }, scenario.routes);
 
     setPending(true);
     setResponse(null);
@@ -272,6 +323,7 @@ export default function App() {
       entryId.current += 1;
       const entry = {
         id: entryId.current,
+        scenario: scenarioId,
         method,
         // Путь и тело сохраняются ровно в том виде, в каком были набраны:
         // клик по истории должен вернуть в поля то же самое, а не разобранный
@@ -322,6 +374,7 @@ export default function App() {
 
     const entry = {
       id: reportId.current,
+      scenario: scenarioId,
       endpoint: draft.endpoint,
       type: draft.type,
       description: draft.description,
@@ -336,7 +389,7 @@ export default function App() {
   function runSchemaCheck() {
     if (response === null || answered === null) return;
 
-    setSchemaResult(checkResponse(answered.method, answered.path, response));
+    setSchemaResult(checkResponse(scenario, answered.method, answered.path, response));
   }
 
   // Повторный прогон по тому же ответу — нужен, когда скрипт правят после
@@ -389,8 +442,28 @@ export default function App() {
   }
 
   function resetServer() {
-    resetState();
+    scenario.reset();
     setResetAt(new Date().toLocaleTimeString('ru-RU'));
+  }
+
+  // Переключение сценария. Ответ и результаты проверок снимаются: они
+  // относятся к серверу другого сценария, и показывать их рядом с новой
+  // спецификацией значило бы вводить в заблуждение. Прогресс, история и
+  // скрипты остаются — они хранятся в разрезе сценариев.
+  function switchScenario(nextId) {
+    const next = findScenario(nextId);
+
+    setScenarioId(next.id);
+    setResponse(null);
+    setAnswered(null);
+    setSchemaResult(null);
+    setTestRun(null);
+    setResetAt(null);
+    // Путь из чужого сценария дал бы 404 на первом же запросе, поэтому поля
+    // конструктора встают на первый эндпоинт нового контракта.
+    setMethod(next.contract.endpoints[0].method);
+    setPath(next.contract.endpoints[0].path);
+    setBodyText('');
   }
 
   // Полный сброс: и сервер, и всё сохранённое. Подтверждение здесь не
@@ -406,11 +479,9 @@ export default function App() {
     setMethod('GET');
     setPath('/users');
     setBodyText('');
-    setTestScript(DEFAULT_SCRIPT);
     setHistory([]);
     setReports([]);
     setRevealedHints([]);
-    setVariables([]);
     setHelpOpen(true);
     setTasksOpen(true);
     setSpecOpen(true);
@@ -419,6 +490,9 @@ export default function App() {
     setHistoryOpen(true);
     setColumns(DEFAULT_COLUMNS);
     setMode(sanitizeMode(null));
+    setScripts({});
+    setVariablesByScenario({});
+    setScenarioId(sanitizeScenario(null));
     setResponse(null);
     setAnswered(null);
     setSchemaResult(null);
@@ -434,7 +508,21 @@ export default function App() {
     <div className="app">
       <header className="app__header">
         <h1 className="app__title">QA API Trainer</h1>
-        <span className="app__scenario">сценарий: {usersContract.title}</span>
+        {/* Список, а не кнопки: сценариев со временем станет много, и они не
+            лестница — между ними переключаются, а не поднимаются. */}
+        <select
+          className="app__scenarioPick"
+          value={scenarioId}
+          aria-label="Сценарий"
+          title={scenario.summary}
+          onChange={(event) => switchScenario(event.target.value)}
+        >
+          {SCENARIOS.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.title}
+            </option>
+          ))}
+        </select>
         <ModeSwitch mode={mode} onChange={setMode} />
 
         <div className="app__actions">
@@ -473,18 +561,18 @@ export default function App() {
 
           <Section
             title="Задания"
-            summary={`${doneTasks} / ${usersTasks.length}`}
+            summary={`${doneTasks} / ${tasks.length}`}
             lead="Порядок произвольный. Задание закрывается само, когда засчитан связанный с ним баг-репорт."
             open={tasksOpen}
             onToggle={() => setTasksOpen((current) => !current)}
           >
-            <TaskList tasks={usersTasks} foundIds={foundIds} mode={mode} />
+            <TaskList tasks={tasks} foundIds={foundIds} mode={mode} />
           </Section>
 
           <Section
             title="Спецификация"
-            summary={`${usersContract.endpoints.length} ${plural(
-              usersContract.endpoints.length,
+            summary={`${scenario.contract.endpoints.length} ${plural(
+              scenario.contract.endpoints.length,
               ['эндпоинт', 'эндпоинта', 'эндпоинтов'],
             )}`}
             lead="Эталон. Всё, что сервер делает иначе, — дефект."
@@ -492,7 +580,7 @@ export default function App() {
             open={specOpen}
             onToggle={() => setSpecOpen((current) => !current)}
           >
-            <SpecPanel contract={usersContract} />
+            <SpecPanel contract={scenario.contract} />
           </Section>
         </section>
 
@@ -574,9 +662,9 @@ export default function App() {
             title="История"
             reference={REFERENCE.history}
             summary={
-              history.length === 0
+              scenarioHistory.length === 0
                 ? null
-                : `${history.length} ${plural(history.length, [
+                : `${scenarioHistory.length} ${plural(scenarioHistory.length, [
                     'запрос',
                     'запроса',
                     'запросов',
@@ -585,7 +673,7 @@ export default function App() {
             open={historyOpen}
             onToggle={() => setHistoryOpen((current) => !current)}
           >
-            <HistoryList entries={history} onPick={pickFromHistory} />
+            <HistoryList entries={scenarioHistory} onPick={pickFromHistory} />
           </Section>
         </section>
 
@@ -630,7 +718,7 @@ export default function App() {
             reference={REFERENCE.report}
           >
             <BugReportForm
-              endpoints={REPORT_ENDPOINTS}
+              endpoints={reportEndpoints}
               types={BUG_TYPES}
               onSubmit={submitReport}
             />
@@ -640,7 +728,7 @@ export default function App() {
             <BugProgress
               bugs={bugs}
               types={BUG_TYPES}
-              reports={reports}
+              reports={scenarioReports}
               foundIds={foundIds}
               revealedHints={revealedHints}
               onRevealHint={revealHint}

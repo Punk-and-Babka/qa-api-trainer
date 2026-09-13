@@ -1,4 +1,4 @@
-import { TASK_TOOLS } from '../mock-api/scenarios/users.tasks.js';
+import { TASK_TOOLS } from '../mock-api/task-tools.js';
 import { plural } from '../plural.js';
 import { TASK_TOOL_NEEDS, isToolEnabled } from '../modes.js';
 

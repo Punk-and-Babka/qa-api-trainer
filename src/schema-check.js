@@ -6,8 +6,6 @@
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import { matchPath } from './mock-api/server.js';
-import { usersContract } from './mock-api/scenarios/users.contract.js';
-import { responseSchemas } from './mock-api/scenarios/users.schemas.js';
 
 export const VALID = 'valid';
 export const INVALID = 'invalid';
@@ -23,21 +21,31 @@ const ajv = new Ajv({ allErrors: true });
 // Именно ради B9 подключён ajv-formats.
 addFormats(ajv);
 
-// Схемы компилируются один раз на загрузку модуля, а не на каждую проверку:
-// компиляция у ajv небыстрая (он генерирует код валидатора), а схемы —
-// константы. Побочный плюс: ошибка в самой схеме обнаружится сразу при старте.
-const compiled = {};
-for (const [route, byStatus] of Object.entries(responseSchemas)) {
-  compiled[route] = {};
-  for (const [status, schema] of Object.entries(byStatus)) {
-    compiled[route][status] = ajv.compile(schema);
+// Схемы компилируются один раз на сценарий и кэшируются: компиляция у ajv
+// небыстрая (он генерирует код валидатора), а схемы — константы. Кэш ленивый,
+// потому что сценариев может быть много, а открывают обычно один.
+const compiledByScenario = new Map();
+
+function compiledSchemas(scenario) {
+  const cached = compiledByScenario.get(scenario.id);
+  if (cached !== undefined) return cached;
+
+  const compiled = {};
+  for (const [route, byStatus] of Object.entries(scenario.schemas)) {
+    compiled[route] = {};
+    for (const [status, schema] of Object.entries(byStatus)) {
+      compiled[route][status] = ajv.compile(schema);
+    }
   }
+
+  compiledByScenario.set(scenario.id, compiled);
+  return compiled;
 }
 
 // Какому эндпоинту спецификации соответствует фактический запрос.
 // "/users/1" → "GET /users/:id". null, если такого эндпоинта в спеке нет.
-export function findRoute(method, path) {
-  const endpoint = usersContract.endpoints.find(
+export function findRoute(scenario, method, path) {
+  const endpoint = scenario.contract.endpoints.find(
     (item) => item.method === method && matchPath(item.path, path) !== null,
   );
   return endpoint === undefined ? null : `${endpoint.method} ${endpoint.path}`;
@@ -71,8 +79,9 @@ export function validateAgainst(schema, value) {
   return { ok, errors: ok ? [] : validate.errors.map(describe) };
 }
 
-export function checkResponse(method, path, response) {
-  const route = findRoute(method, path);
+export function checkResponse(scenario, method, path, response) {
+  const compiled = compiledSchemas(scenario);
+  const route = findRoute(scenario, method, path);
   if (route === null) {
     return {
       verdict: NO_ENDPOINT,

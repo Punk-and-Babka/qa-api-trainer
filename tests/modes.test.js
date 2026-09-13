@@ -9,7 +9,8 @@ import {
   isToolEnabled,
   sanitizeMode,
 } from '../src/modes.js';
-import { TASK_TOOLS, usersTasks } from '../src/mock-api/scenarios/users.tasks.js';
+import { usersTasks } from '../src/mock-api/scenarios/users.tasks.js';
+import { TASK_TOOLS } from '../src/mock-api/task-tools.js';
 
 test('каждый следующий режим включает всё из предыдущего', () => {
   // Инвариант лестницы: переключение вперёд не должно отбирать инструмент.
