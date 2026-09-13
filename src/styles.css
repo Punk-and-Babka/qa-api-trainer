@@ -482,3 +482,230 @@ body {
 .history__time {
   color: var(--muted);
 }
+
+/* ---------- баг-репорты ---------- */
+
+.app__score {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 8px;
+}
+
+.report__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.report__label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+/* В строке подпись фиксированной ширины, чтобы селекты выровнялись
+   по левому краю друг под другом. */
+.report__row .report__label {
+  width: 90px;
+  flex: none;
+  margin-bottom: 0;
+}
+
+.report__select {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 6px;
+}
+
+.report__description {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 6px 8px;
+}
+
+.report__submit {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.report__submit:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.report__submit:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+/* ---------- прогресс ---------- */
+
+.progress__bar {
+  height: 4px;
+  background: var(--panel-alt);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.progress__fill {
+  height: 100%;
+  background: var(--ok);
+}
+
+.found {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  font-size: 12px;
+}
+
+.found__item {
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.found__id {
+  font-family: var(--mono);
+  color: var(--ok);
+}
+
+.found__endpoint {
+  font-family: var(--mono);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.found__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.hints {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hints__button {
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.hints__button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.hints__button:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.hints__note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.hints__list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--warn);
+}
+
+.hints__item {
+  margin-bottom: 3px;
+}
+
+/* ---------- лента репортов ---------- */
+
+.reports {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reports__item {
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.reports__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.reports__endpoint {
+  font-family: var(--mono);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.reports__type {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.verdict {
+  font-family: var(--mono);
+  font-size: 11px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+
+.verdict--ok { color: var(--ok); }
+.verdict--dup { color: var(--warn); }
+.verdict--no { color: var(--err); }
+
+.reports__description {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.reports__note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  border-left: 2px solid var(--border);
+  padding-left: 8px;
+}

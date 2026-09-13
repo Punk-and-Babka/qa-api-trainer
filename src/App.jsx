@@ -3,11 +3,20 @@ import SpecPanel from './components/SpecPanel.jsx';
 import RequestBuilder from './components/RequestBuilder.jsx';
 import ResponseViewer from './components/ResponseViewer.jsx';
 import HistoryList from './components/HistoryList.jsx';
+import BugReportForm from './components/BugReportForm.jsx';
+import BugProgress from './components/BugProgress.jsx';
 import { usersContract } from './mock-api/scenarios/users.contract.js';
+import { bugs } from './mock-api/scenarios/users.bugs.js';
+import { BUG_TYPES } from './mock-api/bug-types.js';
+import { checkReport, endpointOptions, foundBugIds } from './bug-check.js';
 import { handle } from './mock-api/server.js';
 import { resetState } from './mock-api/state.js';
 
 const REQUEST_HEADERS = { 'Content-Type': 'application/json' };
+
+// Список эндпоинтов для формы считается из контракта один раз на загрузку
+// модуля, а не при каждом рендере: контракт — константа, пересчитывать нечего.
+const REPORT_ENDPOINTS = endpointOptions(usersContract);
 
 // decodeURIComponent бросает исключение на битой последовательности вроде "%zz".
 // Приложение из-за опечатки в адресной строке падать не должно.
@@ -61,17 +70,24 @@ export default function App() {
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState([]);
   const [resetAt, setResetAt] = useState(null);
+  const [reports, setReports] = useState([]);
+  const [revealedHints, setRevealedHints] = useState([]);
 
   // Счётчик для key элементов истории. useRef, а не useState: значение должно
   // переживать перерисовки, но его изменение само по себе перерисовку не
   // требует. Менять .current прямо в рендере нельзя — только в обработчиках.
   const entryId = useRef(0);
+  const reportId = useRef(0);
 
   // Производные значения, а не состояние: они однозначно вычисляются из path
   // и bodyText. Держать их в useState значило бы хранить одну и ту же правду
   // дважды и ловить рассинхрон.
   const parsedPath = splitPath(path);
   const parsedBody = parseBody(bodyText);
+
+  // То же самое для найденных багов: они однозначно восстанавливаются из ленты
+  // репортов, поэтому отдельным состоянием не хранятся.
+  const foundIds = foundBugIds(reports);
 
   function send() {
     if (parsedBody.error !== null || pending) {
@@ -119,6 +135,39 @@ export default function App() {
     setBodyText(entry.bodyText);
   }
 
+  // В отличие от истории, вердикт считается прямо здесь, а не внутри
+  // setReports: обработчик выполняется синхронно по клику, и reports в нём —
+  // актуальный список, а не устаревший снимок. Функциональная форма нужна была
+  // истории потому, что запись добавлялась из setTimeout. Внутрь updater'а
+  // счётчик id класть тоже нельзя: React вправе вызвать его дважды, а функция
+  // обновления обязана быть чистой.
+  function submitReport(draft) {
+    const result = checkReport(draft, bugs, foundIds);
+    reportId.current += 1;
+
+    const entry = {
+      id: reportId.current,
+      endpoint: draft.endpoint,
+      type: draft.type,
+      description: draft.description,
+      verdict: result.verdict,
+      bugId: result.bugId,
+    };
+
+    setReports((current) => [entry, ...current]);
+  }
+
+  // Подсказки открываются по одной, в порядке каталога, и только для тех
+  // багов, которые ещё не найдены: подсказывать про уже засчитанный смысла нет.
+  function revealHint() {
+    const next = bugs.find(
+      (bug) => !foundIds.includes(bug.id) && !revealedHints.includes(bug.id),
+    );
+    if (next === undefined) return;
+
+    setRevealedHints((current) => [...current, next.id]);
+  }
+
   function resetServer() {
     resetState();
     setResetAt(new Date().toLocaleTimeString('ru-RU'));
@@ -130,6 +179,9 @@ export default function App() {
         <h1 className="app__title">QA API Trainer</h1>
         <span className="app__scenario">сценарий: {usersContract.title}</span>
         <div className="app__actions">
+          <span className="app__score">
+            найдено {foundIds.length} из {bugs.length}
+          </span>
           {resetAt ? (
             <span className="app__note">состояние сброшено в {resetAt}</span>
           ) : null}
@@ -166,6 +218,23 @@ export default function App() {
         <section className="panel panel--response">
           <h2 className="panel__title">Ответ</h2>
           <ResponseViewer response={response} pending={pending} />
+
+          <h2 className="panel__title panel__title--spaced">Баг-репорт</h2>
+          <BugReportForm
+            endpoints={REPORT_ENDPOINTS}
+            types={BUG_TYPES}
+            onSubmit={submitReport}
+          />
+
+          <h2 className="panel__title panel__title--spaced">Прогресс</h2>
+          <BugProgress
+            bugs={bugs}
+            types={BUG_TYPES}
+            reports={reports}
+            foundIds={foundIds}
+            revealedHints={revealedHints}
+            onRevealHint={revealHint}
+          />
         </section>
       </main>
     </div>
