@@ -41,6 +41,11 @@ jobs:
       # package-lock.json, и падает при расхождении с package.json.
       - run: npm ci
 
+      # Тесты идут до сборки: сломанный код не должен уезжать на сайт.
+      # Публикация при этом не откатывает уже опубликованное — старая версия
+      # просто остаётся висеть, а в Actions будет красный крестик.
+      - run: npm test
+
       - run: npm run build
 
       - uses: actions/upload-pages-artifact@v3
