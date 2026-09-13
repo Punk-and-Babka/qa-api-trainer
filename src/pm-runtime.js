@@ -62,11 +62,35 @@ function createResponse(response) {
   return api;
 }
 
-export function runTests(script, response) {
+// Переменные окружения внутри скрипта. Копия, а не исходный объект: пока
+// скрипт не отработал, состояние приложения меняться не должно — если он
+// упадёт на середине, наверх уйдут только те изменения, которые он успел
+// сделать, и уйдут одним куском.
+function createEnvironment(values) {
+  return {
+    get: (name) => values[name],
+    // Значение приводится к строке намеренно. В таблице переменных лежат
+    // строки, подстановка {{...}} тоже даёт строку, и pm.environment.get не
+    // должен возвращать число там, где {{id}} подставит "5". В Postman
+    // переменные окружения тоже строковые.
+    set: (name, value) => {
+      values[String(name)] = String(value);
+    },
+    unset: (name) => {
+      delete values[String(name)];
+    },
+    has: (name) => Object.hasOwn(values, String(name)),
+    toObject: () => ({ ...values }),
+  };
+}
+
+export function runTests(script, response, variables = {}) {
   const tests = [];
+  const values = { ...variables };
 
   const pm = {
     response: createResponse(response),
+    environment: createEnvironment(values),
     expect,
     // Тест не прерывает остальные: упавший записывается и выполнение идёт
     // дальше. В Postman точно так же — иначе первый же провал скрыл бы
@@ -92,8 +116,8 @@ export function runTests(script, response) {
   } catch (error) {
     // Скрипт упал целиком: синтаксическая ошибка или исключение вне pm.test.
     // Тесты, успевшие отработать до падения, сохраняются — они уже результат.
-    return { error: `${error.name}: ${error.message}`, tests };
+    return { error: `${error.name}: ${error.message}`, tests, variables: values };
   }
 
-  return { error: null, tests };
+  return { error: null, tests, variables: values };
 }

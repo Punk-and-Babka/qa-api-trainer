@@ -8,6 +8,8 @@ const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 export default function RequestBuilder({
   method,
   path,
+  resolvedPath,
+  unknownVars,
   query,
   bodyText,
   bodyError,
@@ -52,6 +54,19 @@ export default function RequestBuilder({
           {pending ? '…' : 'Отправить'}
         </button>
       </div>
+
+      {resolvedPath !== path ? (
+        <div className="request__resolved">
+          <span className="request__label">После подстановки:</span>
+          <span className="request__resolvedPath">{resolvedPath}</span>
+        </div>
+      ) : null}
+
+      {unknownVars.length > 0 ? (
+        <p className="request__warning">
+          Нет в таблице переменных: {unknownVars.join(', ')}. Уйдут на сервер как есть.
+        </p>
+      ) : null}
 
       {queryPairs.length > 0 ? (
         <div className="request__query">

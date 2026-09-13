@@ -8,6 +8,7 @@ import BugProgress from './components/BugProgress.jsx';
 import SchemaCheck from './components/SchemaCheck.jsx';
 import TestsEditor from './components/TestsEditor.jsx';
 import TestResults from './components/TestResults.jsx';
+import EnvPanel from './components/EnvPanel.jsx';
 import { usersContract } from './mock-api/scenarios/users.contract.js';
 import { bugs } from './mock-api/scenarios/users.bugs.js';
 import { BUG_TYPES } from './mock-api/bug-types.js';
@@ -15,6 +16,7 @@ import { checkReport, endpointOptions, foundBugIds } from './bug-check.js';
 import { checkResponse } from './schema-check.js';
 import { runTests } from './pm-runtime.js';
 import { load, save, clear } from './storage.js';
+import { applyVariables, mergeVariables, nextId, toObject } from './variables.js';
 import { handle } from './mock-api/server.js';
 import { resetState } from './mock-api/state.js';
 
@@ -107,6 +109,7 @@ export default function App() {
   const [schemaResult, setSchemaResult] = useState(null);
   const [testScript, setTestScript] = useState(SAVED?.testScript ?? DEFAULT_SCRIPT);
   const [testRun, setTestRun] = useState(null);
+  const [variables, setVariables] = useState(SAVED?.variables ?? []);
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState(SAVED?.history ?? []);
   const [resetAt, setResetAt] = useState(null);
@@ -126,11 +129,20 @@ export default function App() {
   // и запись происходит один раз через 300 мс после последнего изменения.
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      save({ method, path, bodyText, testScript, history, reports, revealedHints });
+      save({
+        method,
+        path,
+        bodyText,
+        testScript,
+        history,
+        reports,
+        revealedHints,
+        variables,
+      });
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [method, path, bodyText, testScript, history, reports, revealedHints]);
+  }, [method, path, bodyText, testScript, history, reports, revealedHints, variables]);
 
   // Ответ, разобранный запрос и результаты проверок сознательно не
   // сохраняются: ответ относится к состоянию сервера, которого после
@@ -139,8 +151,20 @@ export default function App() {
   // Производные значения, а не состояние: они однозначно вычисляются из path
   // и bodyText. Держать их в useState значило бы хранить одну и ту же правду
   // дважды и ловить рассинхрон.
-  const parsedPath = splitPath(path);
-  const parsedBody = parseBody(bodyText);
+  // Подстановка идёт до разбора, и порядок здесь принципиален: тело
+  // {"id": {{userId}}} невалидно как JSON и становится валидным только после
+  // замены. Postman работает так же — подстановка чисто текстовая.
+  const values = toObject(variables);
+  const resolvedPath = applyVariables(path, values);
+  const resolvedBody = applyVariables(bodyText, values);
+
+  const parsedPath = splitPath(resolvedPath.text);
+  const parsedBody = parseBody(resolvedBody.text);
+
+  // Имена, которых нет в таблице. Отправку не блокируют: неизвестная
+  // переменная уходит на сервер как есть, и увидеть своё же {{token}} в ответе
+  // полезнее, чем упереться в запрет.
+  const unknownVars = [...new Set([...resolvedPath.unknown, ...resolvedBody.unknown])];
 
   // То же самое для найденных багов: они однозначно восстанавливаются из ленты
   // репортов, поэтому отдельным состоянием не хранятся.
@@ -187,7 +211,12 @@ export default function App() {
       // Тесты прогоняются сами, как в Postman. Скрипт берётся тот, что был на
       // момент отправки: правка поля во время ожидания ответа не должна менять
       // то, что прогоняется по этому ответу.
-      setTestRun(runTests(testScript, result));
+      const run = runTests(testScript, result, toObject(variables));
+      setTestRun(run);
+      // Скрипт мог сохранить значение из ответа — это и есть цепочка запросов.
+      // Функциональная форма: между отправкой и ответом таблицу могли править
+      // руками, и затирать эту правку целиком снимком нельзя.
+      setVariables((current) => mergeVariables(current, run.variables));
       setPending(false);
       // Новое сверху. Сравнение с прошлым запросом — самое частое действие,
       // и ради него не должно приходиться прокручивать список.
@@ -235,7 +264,23 @@ export default function App() {
   function rerunTests() {
     if (response === null) return;
 
-    setTestRun(runTests(testScript, response));
+    const run = runTests(testScript, response, toObject(variables));
+    setTestRun(run);
+    setVariables((current) => mergeVariables(current, run.variables));
+  }
+
+  function changeVariable(id, field, value) {
+    setVariables((current) =>
+      current.map((item) => (item.id === id ? { ...item, [field]: value } : item)),
+    );
+  }
+
+  function addVariable() {
+    setVariables((current) => [...current, { id: nextId(current), name: '', value: '' }]);
+  }
+
+  function removeVariable(id) {
+    setVariables((current) => current.filter((item) => item.id !== id));
   }
 
   // Подсказки открываются по одной, в порядке каталога, и только для тех
@@ -271,6 +316,7 @@ export default function App() {
     setHistory([]);
     setReports([]);
     setRevealedHints([]);
+    setVariables([]);
     setResponse(null);
     setAnswered(null);
     setSchemaResult(null);
@@ -313,6 +359,8 @@ export default function App() {
           <RequestBuilder
             method={method}
             path={path}
+            resolvedPath={resolvedPath.text}
+            unknownVars={unknownVars}
             query={parsedPath.query}
             bodyText={bodyText}
             bodyError={parsedBody.error}
@@ -321,6 +369,14 @@ export default function App() {
             onPathChange={setPath}
             onBodyChange={setBodyText}
             onSend={send}
+          />
+
+          <h2 className="panel__title panel__title--spaced">Переменные</h2>
+          <EnvPanel
+            variables={variables}
+            onChange={changeVariable}
+            onAdd={addVariable}
+            onRemove={removeVariable}
           />
 
           <h2 className="panel__title panel__title--spaced">Tests</h2>

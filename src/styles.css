@@ -881,3 +881,97 @@ body {
   padding-left: 16px;
   word-break: break-word;
 }
+
+/* ---------- переменные окружения ---------- */
+
+.env__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.env__table td {
+  padding: 0 4px 4px 0;
+  vertical-align: middle;
+}
+
+.env__input {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 6px;
+}
+
+.env__input--name {
+  color: var(--accent);
+}
+
+.env__remove {
+  color: var(--muted);
+  background: none;
+  border: none;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.env__remove:hover {
+  color: var(--err);
+}
+
+.env__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.env__add {
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.env__add:hover {
+  border-color: var(--accent);
+}
+
+.env__note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.env__note code {
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+/* ---------- подстановка в конструкторе ---------- */
+
+.request__resolved {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.request__resolvedPath {
+  font-family: var(--mono);
+  color: var(--ok);
+  word-break: break-all;
+}
+
+.request__warning {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--warn);
+}
