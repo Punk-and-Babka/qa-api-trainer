@@ -12,6 +12,13 @@ import EnvPanel from './components/EnvPanel.jsx';
 import TaskList from './components/TaskList.jsx';
 import HelpBlock from './components/HelpBlock.jsx';
 import Section from './components/Section.jsx';
+import Splitter from './components/Splitter.jsx';
+import {
+  DEFAULT_COLUMNS,
+  SPLITTER_PX,
+  resizeColumns,
+  sanitizeColumns,
+} from './columns.js';
 import { usersContract } from './mock-api/scenarios/users.contract.js';
 import { bugs } from './mock-api/scenarios/users.bugs.js';
 import { usersTasks } from './mock-api/scenarios/users.tasks.js';
@@ -31,6 +38,7 @@ const REQUEST_HEADERS = { 'Content-Type': 'application/json' };
 // Список эндпоинтов для формы считается из контракта один раз на загрузку
 // модуля, а не при каждом рендере: контракт — константа, пересчитывать нечего.
 const REPORT_ENDPOINTS = endpointOptions(usersContract);
+
 
 // Стартовый скрипт: он же короткая документация по доступному API. Пустое поле
 // заставляло бы вспоминать синтаксис, а вспоминать пока нечего.
@@ -124,6 +132,13 @@ export default function App() {
   const [varsOpen, setVarsOpen] = useState(SAVED?.varsOpen ?? true);
   const [testsOpen, setTestsOpen] = useState(SAVED?.testsOpen ?? true);
   const [historyOpen, setHistoryOpen] = useState(SAVED?.historyOpen ?? true);
+  const [columns, setColumns] = useState(() => sanitizeColumns(SAVED?.columns));
+  // Пока тянут разделитель, выделение текста в панелях только мешает.
+  const [resizing, setResizing] = useState(false);
+
+  // Ссылка на сетку колонок нужна, чтобы узнать её ширину в пикселях: доли
+  // сами по себе не говорят, сколько пикселей в одной доле.
+  const layoutRef = useRef(null);
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState(SAVED?.history ?? []);
   const [resetAt, setResetAt] = useState(null);
@@ -158,6 +173,7 @@ export default function App() {
         varsOpen,
         testsOpen,
         historyOpen,
+        columns,
       });
     }, 300);
 
@@ -177,6 +193,7 @@ export default function App() {
     varsOpen,
     testsOpen,
     historyOpen,
+    columns,
   ]);
 
   // Ответ, разобранный запрос и результаты проверок сознательно не
@@ -340,6 +357,19 @@ export default function App() {
     setRevealedHints((current) => [...current, next.id]);
   }
 
+  // Ширину сетки в пикселях знает только DOM — сам пересчёт живёт в
+  // src/columns.js и о браузере ничего не знает. null означает «упёрлись в
+  // минимальную ширину», и тогда состояние не трогается вовсе.
+  function dragColumns(index, deltaPx) {
+    if (layoutRef.current === null) return;
+
+    const gridWidth = layoutRef.current.getBoundingClientRect().width;
+    const next = resizeColumns(columns, index, deltaPx, gridWidth);
+    if (next === null) return;
+
+    setColumns(next);
+  }
+
   function resetServer() {
     resetState();
     setResetAt(new Date().toLocaleTimeString('ru-RU'));
@@ -369,6 +399,7 @@ export default function App() {
     setVarsOpen(true);
     setTestsOpen(true);
     setHistoryOpen(true);
+    setColumns(DEFAULT_COLUMNS);
     setResponse(null);
     setAnswered(null);
     setSchemaResult(null);
@@ -401,7 +432,15 @@ export default function App() {
         </div>
       </header>
 
-      <main className="layout">
+      <main
+        ref={layoutRef}
+        className={`layout${resizing ? ' layout--resizing' : ''}`}
+        style={{
+          gridTemplateColumns: columns
+            .map((value) => `${value}fr`)
+            .join(` ${SPLITTER_PX}px `),
+        }}
+      >
         <section className="panel panel--spec">
           <Section
             title="Как этим пользоваться"
@@ -435,6 +474,13 @@ export default function App() {
             <SpecPanel contract={usersContract} />
           </Section>
         </section>
+
+        <Splitter
+          onResize={(delta) => dragColumns(0, delta)}
+          onStart={() => setResizing(true)}
+          onEnd={() => setResizing(false)}
+          onReset={() => setColumns(DEFAULT_COLUMNS)}
+        />
 
         <section className="panel panel--request">
           <Section
@@ -517,6 +563,13 @@ export default function App() {
             <HistoryList entries={history} onPick={pickFromHistory} />
           </Section>
         </section>
+
+        <Splitter
+          onResize={(delta) => dragColumns(1, delta)}
+          onStart={() => setResizing(true)}
+          onEnd={() => setResizing(false)}
+          onReset={() => setColumns(DEFAULT_COLUMNS)}
+        />
 
         <section className="panel panel--response">
           <Section title="Ответ" first>
