@@ -22,6 +22,7 @@ import { runTests } from './pm-runtime.js';
 import { load, save, clear } from './storage.js';
 import { applyVariables, mergeVariables, nextId, toObject } from './variables.js';
 import { plural } from './plural.js';
+import { REFERENCE } from './reference.js';
 import { handle } from './mock-api/server.js';
 import { resetState } from './mock-api/state.js';
 
@@ -427,6 +428,7 @@ export default function App() {
               ['эндпоинт', 'эндпоинта', 'эндпоинтов'],
             )}`}
             lead="Эталон. Всё, что сервер делает иначе, — дефект."
+            reference={REFERENCE.spec}
             open={specOpen}
             onToggle={() => setSpecOpen((current) => !current)}
           >
@@ -435,25 +437,27 @@ export default function App() {
         </section>
 
         <section className="panel panel--request">
-          <h2 className="panel__title">Запрос</h2>
-          <p className="panel__lead">
-            Путь целиком, вместе с query: <code>/users?limit=0</code>. Enter
-            отправляет.
-          </p>
-          <RequestBuilder
-            method={method}
-            path={path}
-            resolvedPath={resolvedPath.text}
-            unknownVars={unknownVars}
-            query={parsedPath.query}
-            bodyText={bodyText}
-            bodyError={parsedBody.error}
-            pending={pending}
-            onMethodChange={setMethod}
-            onPathChange={setPath}
-            onBodyChange={setBodyText}
-            onSend={send}
-          />
+          <Section
+            title="Запрос"
+            lead="Путь целиком, вместе с query. Enter отправляет."
+            reference={REFERENCE.request}
+            first
+          >
+            <RequestBuilder
+              method={method}
+              path={path}
+              resolvedPath={resolvedPath.text}
+              unknownVars={unknownVars}
+              query={parsedPath.query}
+              bodyText={bodyText}
+              bodyError={parsedBody.error}
+              pending={pending}
+              onMethodChange={setMethod}
+              onPathChange={setPath}
+              onBodyChange={setBodyText}
+              onSend={send}
+            />
+          </Section>
 
           <Section
             title="Переменные"
@@ -467,6 +471,7 @@ export default function App() {
                   ])}`
             }
             lead="Для цепочек: значение из одного ответа подставляется в следующий запрос."
+            reference={REFERENCE.variables}
             open={varsOpen}
             onToggle={() => setVarsOpen((current) => !current)}
           >
@@ -482,6 +487,7 @@ export default function App() {
             title="Tests"
             summary={testRun === null ? null : `${testsPassed} / ${testRun.tests.length}`}
             lead="JavaScript. Тест падает, если функция бросила исключение."
+            reference={REFERENCE.tests}
             open={testsOpen}
             onToggle={() => setTestsOpen((current) => !current)}
           >
@@ -495,6 +501,7 @@ export default function App() {
 
           <Section
             title="История"
+            reference={REFERENCE.history}
             summary={
               history.length === 0
                 ? null
@@ -512,43 +519,51 @@ export default function App() {
         </section>
 
         <section className="panel panel--response">
-          <h2 className="panel__title">Ответ</h2>
-          <ResponseViewer response={response} pending={pending} />
+          <Section title="Ответ" first>
+            <ResponseViewer response={response} pending={pending} />
+          </Section>
 
-          <h2 className="panel__title panel__title--spaced">Результаты тестов</h2>
-          <TestResults run={testRun} />
+          <Section
+            title="Результаты тестов"
+            summary={testRun === null ? null : `${testsPassed} / ${testRun.tests.length}`}
+          >
+            <TestResults run={testRun} />
+          </Section>
 
-          <h2 className="panel__title panel__title--spaced">Проверка по схеме</h2>
-          <p className="panel__lead">
-            Сверяет тело с моделью из спецификации. Видит не всё: статус, не
-            описанный в спеке, до тела не пускает.
-          </p>
-          <SchemaCheck
-            result={schemaResult}
-            canCheck={response !== null && !pending}
-            onCheck={runSchemaCheck}
-          />
+          <Section
+            title="Проверка по схеме"
+            lead="Сверяет тело с моделью из спецификации. Видит не всё."
+            reference={REFERENCE.schema}
+          >
+            <SchemaCheck
+              result={schemaResult}
+              canCheck={response !== null && !pending}
+              onCheck={runSchemaCheck}
+            />
+          </Section>
 
-          <h2 className="panel__title panel__title--spaced">Баг-репорт</h2>
-          <p className="panel__lead">
-            Совпадение проверяется по паре «эндпоинт + тип». Описание пишется
-            для себя — на засчитывание оно не влияет.
-          </p>
-          <BugReportForm
-            endpoints={REPORT_ENDPOINTS}
-            types={BUG_TYPES}
-            onSubmit={submitReport}
-          />
+          <Section
+            title="Баг-репорт"
+            lead="Совпадение проверяется по паре «эндпоинт + тип»."
+            reference={REFERENCE.report}
+          >
+            <BugReportForm
+              endpoints={REPORT_ENDPOINTS}
+              types={BUG_TYPES}
+              onSubmit={submitReport}
+            />
+          </Section>
 
-          <h2 className="panel__title panel__title--spaced">Прогресс</h2>
-          <BugProgress
-            bugs={bugs}
-            types={BUG_TYPES}
-            reports={reports}
-            foundIds={foundIds}
-            revealedHints={revealedHints}
-            onRevealHint={revealHint}
-          />
+          <Section title="Прогресс" summary={`${foundIds.length} / ${bugs.length}`}>
+            <BugProgress
+              bugs={bugs}
+              types={BUG_TYPES}
+              reports={reports}
+              foundIds={foundIds}
+              revealedHints={revealedHints}
+              onRevealHint={revealHint}
+            />
+          </Section>
         </section>
       </main>
     </div>
