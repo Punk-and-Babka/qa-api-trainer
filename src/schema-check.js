@@ -56,6 +56,21 @@ function describe(error) {
   return { path, message: error.message };
 }
 
+// Валидация произвольной схемы — той, которую студент написал сам в панели
+// Tests. Экземпляр Ajv создаётся на каждый вызов намеренно: ajv запоминает
+// схемы по $id, и повторная компиляция схемы с тем же $id падает с «schema
+// with key or id already exists». Схема здесь приходит из текстового поля и
+// компилируется редко, поэтому цена такого запаса прочности незаметна.
+export function validateAgainst(schema, value) {
+  const local = new Ajv({ allErrors: true });
+  addFormats(local);
+
+  const validate = local.compile(schema);
+  const ok = validate(value);
+
+  return { ok, errors: ok ? [] : validate.errors.map(describe) };
+}
+
 export function checkResponse(method, path, response) {
   const route = findRoute(method, path);
   if (route === null) {

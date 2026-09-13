@@ -6,11 +6,14 @@ import HistoryList from './components/HistoryList.jsx';
 import BugReportForm from './components/BugReportForm.jsx';
 import BugProgress from './components/BugProgress.jsx';
 import SchemaCheck from './components/SchemaCheck.jsx';
+import TestsEditor from './components/TestsEditor.jsx';
+import TestResults from './components/TestResults.jsx';
 import { usersContract } from './mock-api/scenarios/users.contract.js';
 import { bugs } from './mock-api/scenarios/users.bugs.js';
 import { BUG_TYPES } from './mock-api/bug-types.js';
 import { checkReport, endpointOptions, foundBugIds } from './bug-check.js';
 import { checkResponse } from './schema-check.js';
+import { runTests } from './pm-runtime.js';
 import { handle } from './mock-api/server.js';
 import { resetState } from './mock-api/state.js';
 
@@ -19,6 +22,17 @@ const REQUEST_HEADERS = { 'Content-Type': 'application/json' };
 // Список эндпоинтов для формы считается из контракта один раз на загрузку
 // модуля, а не при каждом рендере: контракт — константа, пересчитывать нечего.
 const REPORT_ENDPOINTS = endpointOptions(usersContract);
+
+// Стартовый скрипт: он же короткая документация по доступному API. Пустое поле
+// заставляло бы вспоминать синтаксис, а вспоминать пока нечего.
+const DEFAULT_SCRIPT = `pm.test('статус 200', function () {
+  pm.response.to.have.status(200);
+});
+
+pm.test('в теле есть id', function () {
+  pm.expect(pm.response.json()).to.have.property('id');
+});
+`;
 
 // decodeURIComponent бросает исключение на битой последовательности вроде "%zz".
 // Приложение из-за опечатки в адресной строке падать не должно.
@@ -75,6 +89,8 @@ export default function App() {
   // спрашивали, а не с тем, что сейчас набрано в поле.
   const [answered, setAnswered] = useState(null);
   const [schemaResult, setSchemaResult] = useState(null);
+  const [testScript, setTestScript] = useState(DEFAULT_SCRIPT);
+  const [testRun, setTestRun] = useState(null);
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState([]);
   const [resetAt, setResetAt] = useState(null);
@@ -117,6 +133,7 @@ export default function App() {
     // Результат прошлой проверки относится к прошлому ответу — снимаем сразу,
     // иначе он повисит на экране рядом с новым.
     setSchemaResult(null);
+    setTestRun(null);
 
     window.setTimeout(() => {
       entryId.current += 1;
@@ -134,6 +151,10 @@ export default function App() {
 
       setResponse(result);
       setAnswered({ method, path: parsedPath.path });
+      // Тесты прогоняются сами, как в Postman. Скрипт берётся тот, что был на
+      // момент отправки: правка поля во время ожидания ответа не должна менять
+      // то, что прогоняется по этому ответу.
+      setTestRun(runTests(testScript, result));
       setPending(false);
       // Новое сверху. Сравнение с прошлым запросом — самое частое действие,
       // и ради него не должно приходиться прокручивать список.
@@ -173,6 +194,15 @@ export default function App() {
     if (response === null || answered === null) return;
 
     setSchemaResult(checkResponse(answered.method, answered.path, response));
+  }
+
+  // Повторный прогон по тому же ответу — нужен, когда скрипт правят после
+  // получения ответа. Заново запрос при этом не отправляется: состояние
+  // сервера могло бы измениться, и тесты проверяли бы уже другой ответ.
+  function rerunTests() {
+    if (response === null) return;
+
+    setTestRun(runTests(testScript, response));
   }
 
   // Подсказки открываются по одной, в порядке каталога, и только для тех
@@ -229,6 +259,14 @@ export default function App() {
             onSend={send}
           />
 
+          <h2 className="panel__title panel__title--spaced">Tests</h2>
+          <TestsEditor
+            script={testScript}
+            canRun={response !== null && !pending}
+            onChange={setTestScript}
+            onRun={rerunTests}
+          />
+
           <h2 className="panel__title panel__title--spaced">История</h2>
           <HistoryList entries={history} onPick={pickFromHistory} />
         </section>
@@ -236,6 +274,9 @@ export default function App() {
         <section className="panel panel--response">
           <h2 className="panel__title">Ответ</h2>
           <ResponseViewer response={response} pending={pending} />
+
+          <h2 className="panel__title panel__title--spaced">Результаты тестов</h2>
+          <TestResults run={testRun} />
 
           <h2 className="panel__title panel__title--spaced">Проверка по схеме</h2>
           <SchemaCheck
